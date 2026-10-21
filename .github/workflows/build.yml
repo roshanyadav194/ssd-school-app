@@ -37,9 +37,10 @@ jobs:
           sed -i 's/minSdkVersion .*/minSdkVersion 21/' android/app/build.gradle || true
           sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <queries>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="https" />\n        </intent>\n        <intent>\n            <action android:name="android.intent.action.DIAL" />\n            <data android:scheme="tel" />\n        </intent>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="geo" />\n        </intent>\n    </queries>' android/app/src/main/AndroidManifest.xml || true
 
-      - name: Install Dependencies
+      - name: Install Dependencies & Generate App Icon
         run: |
           flutter pub get
+          dart run flutter_launcher_icons
 
       - name: Build Android App Bundle (.aab for Play Store)
         run: |
