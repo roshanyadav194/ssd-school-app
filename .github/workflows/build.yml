@@ -1,0 +1,64 @@
+name: Build Flutter APK & AAB
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Create Base Flutter Project
+        run: |
+          flutter create --org com.ssdconvent --project-name ssd_school_app temp_app
+          cp -r temp_app/android ./
+          cp -r temp_app/web ./
+          cp -r temp_app/ios ./
+          rm -rf temp_app
+
+      - name: Configure Android Permissions & Target SDK
+        run: |
+          sed -i 's/minSdkVersion .*/minSdkVersion 21/' android/app/build.gradle || true
+          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <queries>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="https" />\n        </intent>\n        <intent>\n            <action android:name="android.intent.action.DIAL" />\n            <data android:scheme="tel" />\n        </intent>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="geo" />\n        </intent>\n    </queries>' android/app/src/main/AndroidManifest.xml
+
+      - name: Install Dependencies
+        run: |
+          flutter pub get
+
+      - name: Build Android App Bundle (.aab for Play Store)
+        run: |
+          flutter build appbundle --release --no-codesign
+
+      - name: Build Android APK (for direct install)
+        run: |
+          flutter build apk --release
+
+      - name: Upload Play Store AAB Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ssd-convent-playstore-aab
+          path: build/app/outputs/bundle/release/*.aab
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ssd-convent-direct-apk
+          path: build/app/outputs/flutter-apk/*.apk
+          
