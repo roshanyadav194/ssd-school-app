@@ -28,15 +28,14 @@ jobs:
       - name: Create Base Flutter Project
         run: |
           flutter create --org com.ssdconvent --project-name ssd_school_app temp_app
-          cp -r temp_app/android ./
-          cp -r temp_app/web ./
-          cp -r temp_app/ios ./
+          cp -rn temp_app/android ./ 2>/dev/null || true
+          cp -rn temp_app/web ./ 2>/dev/null || true
           rm -rf temp_app
 
-      - name: Configure Android Permissions & Target SDK
+      - name: Configure Android Permissions & MinSDK
         run: |
           sed -i 's/minSdkVersion .*/minSdkVersion 21/' android/app/build.gradle || true
-          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <queries>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="https" />\n        </intent>\n        <intent>\n            <action android:name="android.intent.action.DIAL" />\n            <data android:scheme="tel" />\n        </intent>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="geo" />\n        </intent>\n    </queries>' android/app/src/main/AndroidManifest.xml
+          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <queries>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="https" />\n        </intent>\n        <intent>\n            <action android:name="android.intent.action.DIAL" />\n            <data android:scheme="tel" />\n        </intent>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="geo" />\n        </intent>\n    </queries>' android/app/src/main/AndroidManifest.xml || true
 
       - name: Install Dependencies
         run: |
@@ -44,7 +43,7 @@ jobs:
 
       - name: Build Android App Bundle (.aab for Play Store)
         run: |
-          flutter build appbundle --release --no-codesign
+          flutter build appbundle --release
 
       - name: Build Android APK (for direct install)
         run: |
@@ -61,4 +60,3 @@ jobs:
         with:
           name: ssd-convent-direct-apk
           path: build/app/outputs/flutter-apk/*.apk
-          
