@@ -1,5 +1,3 @@
-// Production-ready Flutter Shell with Floating Glassmorphic Back & Skeleton Transitions
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -28,42 +26,49 @@ class SSDConventApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0A1E38),
+          seedColor: const Color(0xFF102747),
           brightness: Brightness.dark,
         ),
-        scaffoldBackgroundColor: const Color(0xFF071324),
+        scaffoldBackgroundColor: const Color(0xFF08162B),
         useMaterial3: true,
       ),
-      home: const NativeShellWebView(),
+      home: const SSDWebViewScreen(),
     );
   }
 }
 
-class NativeShellWebView extends StatefulWidget {
-  const NativeShellWebView({super.key});
+class SSDWebViewScreen extends StatefulWidget {
+  const SSDWebViewScreen({super.key});
 
   @override
-  State createState() => _NativeShellWebViewState();
+  State<SSDWebViewScreen> createState() => _SSDWebViewScreenState();
 }
 
-class _NativeShellWebViewState extends State {
+class _SSDWebViewScreenState extends State<SSDWebViewScreen>
+    with SingleTickerProviderStateMixin {
   late final WebViewController _controller;
   bool _isLoading = true;
   bool _canGoBack = false;
+  late final AnimationController _shimmerController;
 
-  final String _schoolPortalUrl = 'https://ssdconvent.pages.dev';
+  final String _websiteUrl = 'https://ssdconvent.pages.dev';
 
   @override
   void initState() {
     super.initState();
 
+    _shimmerController = AnimationController.unbounded(vsync: this)
+      ..repeat(min: -0.5, max: 1.5, period: const Duration(milliseconds: 1200));
+
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0xFF071324))
+      ..setBackgroundColor(const Color(0xFF08162B))
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (String url) {
-            setState(() => _isLoading = true);
+            setState(() {
+              _isLoading = true;
+            });
           },
           onPageFinished: (String url) async {
             final canBack = await _controller.canGoBack();
@@ -75,7 +80,6 @@ class _NativeShellWebViewState extends State {
           onNavigationRequest: (NavigationRequest request) async {
             final uri = Uri.parse(request.url);
 
-            // Handle native app intents (Phone calls, WhatsApp, Maps)
             if (uri.scheme == 'tel' ||
                 uri.scheme == 'mailto' ||
                 request.url.contains('wa.me') ||
@@ -90,38 +94,64 @@ class _NativeShellWebViewState extends State {
           },
         ),
       )
-      ..loadRequest(Uri.parse(_schoolPortalUrl));
+      ..loadRequest(Uri.parse(_websiteUrl));
   }
 
-  Future _handleBackPress() async {
+  @override
+  void dispose() {
+    _shimmerController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleBackPress() async {
     if (await _controller.canGoBack()) {
       await _controller.goBack();
       final canBack = await _controller.canGoBack();
-      setState(() => _canGoBack = canBack);
+      setState(() {
+        _canGoBack = canBack;
+      });
     } else {
       _showExitDialog();
     }
   }
 
-  Future _showExitDialog() async {
+  Future<void> _showExitDialog() async {
     if (!mounted) return;
-    final shouldExit = await showDialog(
+    final shouldExit = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0D223F),
+        backgroundColor: const Color(0xFF0A1E38),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Exit School App?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: const Text('Do you want to exit S.S.D. Convent School?', style: TextStyle(color: Color(0xFFCBD5E1))),
+        title: const Text(
+          'Exit S.S.D. Convent School?',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        content: const Text(
+          'Are you sure you want to close the app?',
+          style: TextStyle(color: Color(0xFFCBD5E1)),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFFD6AD55), fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(
+                color: Color(0xFFD6AD55),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
+              backgroundColor: const Color(0xFFEF4444),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Exit'),
@@ -144,66 +174,161 @@ class _NativeShellWebViewState extends State {
         await _handleBackPress();
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF071324),
-        body: Stack(
-          children: [
-            // 1. Full Screen Web Content (No Browser Borders)
-            SafeArea(
-              child: RefreshIndicator(
+        backgroundColor: const Color(0xFF08162B),
+        body: SafeArea(
+          child: Stack(
+            children: [
+              // 1. WebView Container
+              RefreshIndicator(
                 color: const Color(0xFFD6AD55),
-                backgroundColor: const Color(0xFF0D223F),
-                onRefresh: () async => await _controller.reload(),
+                backgroundColor: const Color(0xFF0A1E38),
+                onRefresh: () async {
+                  await _controller.reload();
+                },
                 child: WebViewWidget(controller: _controller),
               ),
-            ),
 
-            // 2. AESTHETIC FLOATING TOP BACK BUTTON (Glassmorphic Pill)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 8,
-              left: 14,
-              child: AnimatedOpacity(
-                opacity: _canGoBack ? 1.0 : 0.85,
-                duration: const Duration(milliseconds: 250),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              // 2. Native App Skeleton Shimmer (Replaces browser progress lines)
+              if (_isLoading)
+                IgnorePointer(
+                  child: AnimatedOpacity(
+                    opacity: _isLoading ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 250),
                     child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0A1E38).withOpacity(0.75),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: const Color(0xFFD6AD55).withOpacity(0.3), width: 1.2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.35),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          )
-                        ],
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(24),
-                          onTap: _handleBackPress,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
+                      color: const Color(0xFF08162B),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      child: AnimatedBuilder(
+                        animation: _shimmerController,
+                        builder: (context, child) {
+                          return ShaderMask(
+                            blendMode: BlendMode.srcATop,
+                            shaderCallback: (bounds) {
+                              return LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                stops: [
+                                  _shimmerController.value - 0.3,
+                                  _shimmerController.value,
+                                  _shimmerController.value + 0.3,
+                                ],
+                                colors: const [
+                                  Color(0xFF0F2442),
+                                  Color(0xFF1E3A66),
+                                  Color(0xFF0F2442),
+                                ],
+                              ).createShader(bounds);
+                            },
+                            child: child,
+                          );
+                        },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 50),
+                            Container(
+                              height: 140,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0F2442),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Row(
                               children: [
-                                const Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: Color(0xFFD6AD55)),
-                                const SizedBox(width: 6),
-                                Text(
-                                  _canGoBack ? 'Back' : 'Home',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.3,
+                                Expanded(
+                                  child: Container(
+                                    height: 90,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0F2442),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Container(
+                                    height: 90,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0F2442),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 20),
+                            Container(
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0F2442),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0F2442),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // 3. Floating Glassmorphic Top Back Button (Appears only on subpages)
+              Positioned(
+                top: 14,
+                left: 14,
+                child: AnimatedOpacity(
+                  opacity: _canGoBack ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 250),
+                  child: IgnorePointer(
+                    ignoring: !_canGoBack,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _handleBackPress,
+                        borderRadius: BorderRadius.circular(24),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0A1E38).withOpacity(0.85),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: const Color(0xFFD6AD55).withOpacity(0.35),
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.35),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                size: 16,
+                                color: Color(0xFFD6AD55),
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                'Back',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -211,60 +336,8 @@ class _NativeShellWebViewState extends State {
                   ),
                 ),
               ),
-            ),
-
-            // 3. NATIVE SKELETON LOAD OVERLAY (Smooth App-feel transition)
-            if (_isLoading)
-              Positioned.fill(
-                child: Container(
-                  color: const Color(0xFF071324),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 64,
-                          height: 64,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: const RadialGradient(
-                              colors: [Color(0xFFF3D27A), Color(0xFFB88E31)],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFD6AD55).withOpacity(0.35),
-                                blurRadius: 24,
-                                spreadRadius: 4,
-                              )
-                            ],
-                          ),
-                          child: const Icon(Icons.school_rounded, color: Color(0xFF071324), size: 34),
-                        ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          'S.S.D. CONVENT SCHOOL',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        const SizedBox(
-                          width: 120,
-                          child: LinearProgressIndicator(
-                            color: Color(0xFFD6AD55),
-                            backgroundColor: Color(0xFF0F2646),
-                            minHeight: 2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
