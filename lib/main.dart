@@ -1,3 +1,5 @@
+// Production-ready Flutter Shell with Floating Glassmorphic Back & Skeleton Transitions
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -7,8 +9,10 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
-      statusBarColor: Color(0xFF071324),
+      statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: Color(0xFF071324),
+      systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
   runApp(const SSDConventApp());
@@ -24,32 +28,30 @@ class SSDConventApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF102747),
+          seedColor: const Color(0xFF0A1E38),
           brightness: Brightness.dark,
         ),
-        scaffoldBackgroundColor: const Color(0xFF08162B),
+        scaffoldBackgroundColor: const Color(0xFF071324),
         useMaterial3: true,
       ),
-      home: const SSDWebViewScreen(),
+      home: const NativeShellWebView(),
     );
   }
 }
 
-class SSDWebViewScreen extends StatefulWidget {
-  const SSDWebViewScreen({super.key});
+class NativeShellWebView extends StatefulWidget {
+  const NativeShellWebView({super.key});
 
   @override
-  State<SSDWebViewScreen> createState() => _SSDWebViewScreenState();
+  State createState() => _NativeShellWebViewState();
 }
 
-class _SSDWebViewScreenState extends State<SSDWebViewScreen> {
+class _NativeShellWebViewState extends State {
   late final WebViewController _controller;
   bool _isLoading = true;
-  double _progress = 0.0;
   bool _canGoBack = false;
-  bool _canGoForward = false;
 
-  final String _websiteUrl = 'https://ssdconvent.pages.dev';
+  final String _schoolPortalUrl = 'https://ssdconvent.pages.dev';
 
   @override
   void initState() {
@@ -57,31 +59,23 @@ class _SSDWebViewScreenState extends State<SSDWebViewScreen> {
 
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0xFF08162B))
+      ..setBackgroundColor(const Color(0xFF071324))
       ..setNavigationDelegate(
         NavigationDelegate(
-          onProgress: (int progress) {
-            setState(() {
-              _progress = progress / 100.0;
-            });
-          },
           onPageStarted: (String url) {
-            setState(() {
-              _isLoading = true;
-            });
+            setState(() => _isLoading = true);
           },
           onPageFinished: (String url) async {
             final canBack = await _controller.canGoBack();
-            final canForward = await _controller.canGoForward();
             setState(() {
               _isLoading = false;
               _canGoBack = canBack;
-              _canGoForward = canForward;
             });
           },
           onNavigationRequest: (NavigationRequest request) async {
             final uri = Uri.parse(request.url);
 
+            // Handle native app intents (Phone calls, WhatsApp, Maps)
             if (uri.scheme == 'tel' ||
                 uri.scheme == 'mailto' ||
                 request.url.contains('wa.me') ||
@@ -96,48 +90,38 @@ class _SSDWebViewScreenState extends State<SSDWebViewScreen> {
           },
         ),
       )
-      ..loadRequest(Uri.parse(_websiteUrl));
+      ..loadRequest(Uri.parse(_schoolPortalUrl));
   }
 
-  Future<void> _handleBackPress() async {
+  Future _handleBackPress() async {
     if (await _controller.canGoBack()) {
       await _controller.goBack();
       final canBack = await _controller.canGoBack();
-      final canForward = await _controller.canGoForward();
-      setState(() {
-        _canGoBack = canBack;
-        _canGoForward = canForward;
-      });
+      setState(() => _canGoBack = canBack);
     } else {
       _showExitDialog();
     }
   }
 
-  Future<void> _showExitDialog() async {
+  Future _showExitDialog() async {
     if (!mounted) return;
-    final shouldExit = await showDialog<bool>(
+    final shouldExit = await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0A1E38),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Exit S.S.D. Convent School?',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        content: const Text(
-          'Are you sure you want to close the application?',
-          style: TextStyle(color: Color(0xFFCBD5E1)),
-        ),
+        backgroundColor: const Color(0xFF0D223F),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Exit School App?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: const Text('Do you want to exit S.S.D. Convent School?', style: TextStyle(color: Color(0xFFCBD5E1))),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFFD6AD55), fontWeight: FontWeight.w600)),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFFD6AD55), fontWeight: FontWeight.bold)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
+              backgroundColor: Colors.redAccent,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Exit'),
@@ -160,132 +144,127 @@ class _SSDWebViewScreenState extends State<SSDWebViewScreen> {
         await _handleBackPress();
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF08162B),
-        // 1. TOP TOOLBAR
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF0A1E38),
-          elevation: 2,
-          leading: IconButton(
-            icon: Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: _canGoBack ? const Color(0xFFD6AD55) : Colors.white38,
+        backgroundColor: const Color(0xFF071324),
+        body: Stack(
+          children: [
+            // 1. Full Screen Web Content (No Browser Borders)
+            SafeArea(
+              child: RefreshIndicator(
+                color: const Color(0xFFD6AD55),
+                backgroundColor: const Color(0xFF0D223F),
+                onRefresh: () async => await _controller.reload(),
+                child: WebViewWidget(controller: _controller),
+              ),
             ),
-            tooltip: 'Go Back',
-            onPressed: _handleBackPress,
-          ),
-          title: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: Image.asset(
-                  'assets/icon/app_logo.png',
-                  width: 28,
-                  height: 28,
-                  errorBuilder: (context, error, stackTrace) => const Icon(
-                    Icons.school,
-                    color: Color(0xFFD6AD55),
-                    size: 24,
+
+            // 2. AESTHETIC FLOATING TOP BACK BUTTON (Glassmorphic Pill)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 8,
+              left: 14,
+              child: AnimatedOpacity(
+                opacity: _canGoBack ? 1.0 : 0.85,
+                duration: const Duration(milliseconds: 250),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0A1E38).withOpacity(0.75),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: const Color(0xFFD6AD55).withOpacity(0.3), width: 1.2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.35),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(24),
+                          onTap: _handleBackPress,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: Color(0xFFD6AD55)),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _canGoBack ? 'Back' : 'Home',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              const Text(
-                'S.S.D. Convent School',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded, color: Color(0xFFD6AD55)),
-              tooltip: 'Refresh',
-              onPressed: () => _controller.reload(),
             ),
-          ],
-        ),
 
-        // 2. MAIN WEBVIEW BODY
-        body: SafeArea(
-          child: Stack(
-            children: [
-              RefreshIndicator(
-                color: const Color(0xFFD6AD55),
-                backgroundColor: const Color(0xFF0A1E38),
-                onRefresh: () async {
-                  await _controller.reload();
-                },
-                child: WebViewWidget(controller: _controller),
-              ),
-              if (_isLoading)
-                LinearProgressIndicator(
-                  value: _progress,
-                  backgroundColor: const Color(0xFF08162B),
-                  color: const Color(0xFFD6AD55),
-                  minHeight: 3,
+            // 3. NATIVE SKELETON LOAD OVERLAY (Smooth App-feel transition)
+            if (_isLoading)
+              Positioned.fill(
+                child: Container(
+                  color: const Color(0xFF071324),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const RadialGradient(
+                              colors: [Color(0xFFF3D27A), Color(0xFFB88E31)],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFD6AD55).withOpacity(0.35),
+                                blurRadius: 24,
+                                spreadRadius: 4,
+                              )
+                            ],
+                          ),
+                          child: const Icon(Icons.school_rounded, color: Color(0xFF071324), size: 34),
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'S.S.D. CONVENT SCHOOL',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const SizedBox(
+                          width: 120,
+                          child: LinearProgressIndicator(
+                            color: Color(0xFFD6AD55),
+                            backgroundColor: Color(0xFF0F2646),
+                            minHeight: 2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-            ],
-          ),
-        ),
-
-        // 3. BOTTOM NAVIGATION BAR (WITH BACK BUTTON)
-        bottomNavigationBar: Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF0A1E38),
-            border: Border(top: BorderSide(color: Color(0xFF162D4A), width: 1)),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // Bottom Back Button
-              IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                color: _canGoBack ? const Color(0xFFD6AD55) : Colors.white24,
-                iconSize: 26,
-                tooltip: 'Back',
-                onPressed: _handleBackPress,
               ),
-              // Bottom Home Button
-              IconButton(
-                icon: const Icon(Icons.home_rounded),
-                color: const Color(0xFFD6AD55),
-                iconSize: 26,
-                tooltip: 'Home',
-                onPressed: () => _controller.loadRequest(Uri.parse(_websiteUrl)),
-              ),
-              // Bottom Reload Button
-              IconButton(
-                icon: const Icon(Icons.replay_rounded),
-                color: const Color(0xFFD6AD55),
-                iconSize: 26,
-                tooltip: 'Reload',
-                onPressed: () => _controller.reload(),
-              ),
-              // Bottom Forward Button
-              IconButton(
-                icon: const Icon(Icons.arrow_forward_rounded),
-                color: _canGoForward ? const Color(0xFFD6AD55) : Colors.white24,
-                iconSize: 26,
-                tooltip: 'Forward',
-                onPressed: () async {
-                  if (await _controller.canGoForward()) {
-                    await _controller.goForward();
-                    final canBack = await _controller.canGoBack();
-                    final canForward = await _controller.canGoForward();
-                    setState(() {
-                      _canGoBack = canBack;
-                      _canGoForward = canForward;
-                    });
-                  }
-                },
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );
