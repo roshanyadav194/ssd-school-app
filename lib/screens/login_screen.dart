@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dashboard_screen.dart';
 import 'admin_hub_screen.dart';
 
@@ -18,9 +19,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _birthYearController = TextEditingController();
   final _adminIdController = TextEditingController();
   final _adminPassController = TextEditingController();
-  
-  bool _rememberMe = true; // Visual Remember Me State
+
+  bool _rememberMe = true;
   bool _isLoading = false;
+  bool _obscureAdminPass = true;
 
   SupabaseClient? get _supabaseClient {
     try {
@@ -36,7 +38,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _loadSavedCredentials();
   }
 
-  // Auto-fill inputs if previously remembered
   Future<void> _loadSavedCredentials() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -107,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       if (!mounted) return;
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => DashboardScreen(studentData: res)),
       );
@@ -178,7 +179,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       if (!mounted) return;
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const AdminHubScreen()),
       );
@@ -197,9 +198,104 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _openRecoverySheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(22.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.help_center_rounded, color: Color(0xFF1E3A8A)),
+                SizedBox(width: 8),
+                Text(
+                  'Login Assistance & Recovery',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F1E36)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              _selectedTab == 0
+                  ? 'Parents can log in using the registered 10-digit mobile number and student birth year (e.g. 2012). Need to update your registered phone number?'
+                  : 'Enter your Admin Email in the field above and tap below to send a Supabase password reset link.',
+              style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B), height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            if (_selectedTab == 0)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.chat_rounded, size: 18),
+                  label: const Text('Request Credential Help on WhatsApp', style: TextStyle(fontWeight: FontWeight.bold)),
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    final uri = Uri.parse('https://wa.me/917880884750?text=Hello%20SSD%20Convent%20School%2C%20I%20need%20help%20with%20my%20Parent%20Portal%20login%20credentials.');
+                    try {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    } catch (_) {}
+                  },
+                ),
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E3A8A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.mark_email_Read_rounded, size: 18),
+                  label: const Text('Send Admin Password Reset Email', style: TextStyle(fontWeight: FontWeight.bold)),
+                  onPressed: () async {
+                    final email = _adminIdController.text.trim();
+                    Navigator.pop(ctx);
+                    if (email.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please enter your Admin email first.')),
+                      );
+                      return;
+                    }
+                    try {
+                      await _supabaseClient?.auth.resetPasswordForEmail(email);
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Password reset link sent to $email'), backgroundColor: Colors.green),
+                      );
+                    } catch (e) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Reset error: $e'), backgroundColor: Colors.red),
+                      );
+                    }
+                  },
+                ),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildRememberMeToggle() {
     return Container(
-      margin: const EdgeInsets.only(top: 14, bottom: 20),
+      margin: const EdgeInsets.only(top: 14, bottom: 16),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
@@ -266,6 +362,10 @@ class _LoginScreenState extends State<LoginScreen> {
             hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.normal),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 1.5),
+            ),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
           ),
@@ -281,10 +381,14 @@ class _LoginScreenState extends State<LoginScreen> {
           keyboardType: TextInputType.text,
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.cake_rounded, color: Color(0xFF1E3A8A), size: 20),
-            hintText: 'e.g. 2012',
+            hintText: 'e.g. 2012 or 2012-05-14',
             hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.normal),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 1.5),
+            ),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
           ),
@@ -304,6 +408,17 @@ class _LoginScreenState extends State<LoginScreen> {
             child: _isLoading
                 ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                 : const Text('Access Student Dashboard', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Center(
+          child: TextButton.icon(
+            onPressed: _openRecoverySheet,
+            icon: const Icon(Icons.help_outline_rounded, size: 16, color: Color(0xFF64748B)),
+            label: const Text(
+              'Trouble logging in? Get Credential Help',
+              style: TextStyle(color: Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.w600),
+            ),
           ),
         ),
       ],
@@ -328,6 +443,10 @@ class _LoginScreenState extends State<LoginScreen> {
             hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.normal),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFF0F1E36), width: 1.5),
+            ),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
           ),
@@ -340,13 +459,25 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 8),
         TextField(
           controller: _adminPassController,
-          obscureText: true,
+          obscureText: _obscureAdminPass,
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.lock_rounded, color: Color(0xFF1E3A8A), size: 20),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscureAdminPass ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                color: const Color(0xFF64748B),
+                size: 20,
+              ),
+              onPressed: () => setState(() => _obscureAdminPass = !_obscureAdminPass),
+            ),
             hintText: 'Enter password',
             hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.normal),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFF0F1E36), width: 1.5),
+            ),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
           ),
@@ -366,6 +497,17 @@ class _LoginScreenState extends State<LoginScreen> {
             child: _isLoading
                 ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                 : const Text('Login to Admin Panel', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Center(
+          child: TextButton.icon(
+            onPressed: _openRecoverySheet,
+            icon: const Icon(Icons.lock_reset_rounded, size: 16, color: Color(0xFF64748B)),
+            label: const Text(
+              'Forgot Admin Passcode?',
+              style: TextStyle(color: Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.w600),
+            ),
           ),
         ),
       ],
@@ -395,7 +537,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -403,24 +545,33 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   children: [
                     Container(
-                      width: 60,
-                      height: 60,
+                      width: 64,
+                      height: 64,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E3A8A),
-                        borderRadius: BorderRadius.circular(16),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF1E3A8A), Color(0xFF0F1E36)],
+                        ),
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: const [
+                          BoxShadow(color: Color(0x261E3A8A), blurRadius: 14, offset: Offset(0, 6)),
+                        ],
                       ),
-                      child: const Icon(Icons.school_rounded, color: Colors.white, size: 32),
+                      child: const Icon(Icons.school_rounded, color: Colors.white, size: 34),
                     ),
                     const SizedBox(height: 12),
                     const Text(
                       'S.S.D. CONVENT SCHOOL',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F1E36)),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F1E36)),
                     ),
-                    const Text('Family Information Portal', style: TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Family & Administration Gateway',
+                      style: TextStyle(color: Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 26),
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
@@ -432,14 +583,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     Expanded(
                       child: GestureDetector(
                         onTap: () => setState(() => _selectedTab = 0),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(vertical: 11),
                           decoration: BoxDecoration(
                             color: _selectedTab == 0 ? const Color(0xFF1E3A8A) : Colors.transparent,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
-                            'Parent',
+                            'Parent / Student',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: _selectedTab == 0 ? Colors.white : const Color(0xFF64748B),
@@ -453,8 +605,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     Expanded(
                       child: GestureDetector(
                         onTap: () => setState(() => _selectedTab = 1),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(vertical: 11),
                           decoration: BoxDecoration(
                             color: _selectedTab == 1 ? const Color(0xFF0F1E36) : Colors.transparent,
                             borderRadius: BorderRadius.circular(10),
@@ -475,7 +628,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              if (_selectedTab == 0) _buildParentLoginForm() else _buildAdminLoginForm(),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                child: _selectedTab == 0 ? _buildParentLoginForm() : _buildAdminLoginForm(),
+              ),
             ],
           ),
         ),
