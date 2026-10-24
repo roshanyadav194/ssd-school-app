@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'login_screen.dart';
@@ -23,6 +22,36 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
     'Class 6th - Fundamental Test',
     'Class 11th / 12th - Senior Stream Assessment',
   ];
+
+  static const Map<String, List<Map<String, dynamic>>> _mockQuestions = {
+    'default': [
+      {
+        'q': 'Which organelle is known as the powerhouse of the cell?',
+        'options': ['Nucleus', 'Mitochondria', 'Ribosome', 'Golgi Apparatus'],
+        'ans': 1,
+      },
+      {
+        'q': 'If a triangle has angles 60° and 70°, what is the third angle?',
+        'options': ['40°', '50°', '60°', '80°'],
+        'ans': 1,
+      },
+      {
+        'q': 'What is the chemical formula of Baking Soda?',
+        'options': ['Na2CO3', 'NaHCO3', 'NaOH', 'NaCl'],
+        'ans': 1,
+      },
+      {
+        'q': 'Newton’s First Law of Motion is also known as the Law of:',
+        'options': ['Momentum', 'Inertia', 'Gravitation', 'Action-Reaction'],
+        'ans': 1,
+      },
+      {
+        'q': 'Where is S.S.D. Convent School campus situated?',
+        'options': ['Champapur, Janghai, Prayagraj', 'Civil Lines', 'Naini', 'Phulpur'],
+        'ans': 0,
+      },
+    ],
+  };
 
   @override
   void initState() {
@@ -52,6 +81,245 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
     }
   }
 
+  void _openInteractiveExamHall() {
+    final questions = _mockQuestions['default']!;
+    int currentIdx = 0;
+    int score = 0;
+    int? selectedOption;
+    bool isCompleted = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final currentQ = questions[currentIdx];
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'S.S.D. ONLINE ASSESSMENT HALL',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFFD97706),
+                              letterSpacing: 0.9,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _selectedExamClass,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0F1E36),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const Divider(height: 20),
+                if (!isCompleted) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Question ${currentIdx + 1} of ${questions.length}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E3A8A),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'Score: $score',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1E3A8A),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: (currentIdx + 1) / questions.length,
+                      minHeight: 6,
+                      backgroundColor: const Color(0xFFE2E8F0),
+                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF1E3A8A)),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    currentQ['q'] as String,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F1E36),
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  ...List.generate((currentQ['options'] as List).length, (idx) {
+                    final opt = (currentQ['options'] as List)[idx] as String;
+                    final isSelected = selectedOption == idx;
+                    return GestureDetector(
+                      onTap: () => setModalState(() => selectedOption = idx),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isSelected ? const Color(0xFF1E3A8A) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isSelected ? const Color(0xFF1E3A8A) : const Color(0xFFE2E8F0),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 24,
+                              height: 24,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: isSelected ? Colors.white : const Color(0xFFE2E8F0),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                String.fromCharCode(65 + idx),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? const Color(0xFF1E3A8A) : const Color(0xFF475569),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                opt,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: isSelected ? Colors.white : const Color(0xFF0F1E36),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0F1E36),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: selectedOption == null
+                          ? null
+                          : () {
+                              if (selectedOption == currentQ['ans']) {
+                                score++;
+                              }
+                              if (currentIdx + 1 < questions.length) {
+                                setModalState(() {
+                                  currentIdx++;
+                                  selectedOption = null;
+                                });
+                              } else {
+                                setModalState(() => isCompleted = true);
+                              }
+                            },
+                      child: Text(
+                        currentIdx + 1 == questions.length ? 'Finish & Evaluate' : 'Next Question →',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  Center(
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withOpacity(0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.emoji_events_rounded, color: Color(0xFF10B981), size: 48),
+                        ),
+                        const SizedBox(height: 14),
+                        const Text(
+                          'Assessment Complete!',
+                          style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Color(0xFF0F1E36)),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'You scored $score out of ${questions.length} (${((score / questions.length) * 100).toInt()}%)',
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
+                        ),
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1E3A8A),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Done', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -74,13 +342,16 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
               child: const Icon(Icons.school_rounded, color: Color(0xFF1E3A8A), size: 20),
             ),
             const SizedBox(width: 10),
-            const Text(
-              'S.S.D. Convent School',
-              style: TextStyle(
-                color: Color(0xFF0F1E36),
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2,
+            const Expanded(
+              child: Text(
+                'S.S.D. Convent School',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Color(0xFF0F1E36),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                ),
               ),
             ),
           ],
@@ -189,6 +460,22 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
                                 height: 1.4,
                               ),
                             ),
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                children: [
+                                  _StatBadge(val: 'Nursery–12', label: 'Classes'),
+                                  _StatBadge(val: '100%', label: 'Smart Support'),
+                                  _StatBadge(val: 'Prayagraj', label: 'Campus'),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -198,12 +485,19 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
               },
             ),
 
-            const SizedBox(height: 26),
+            const SizedBox(height: 24),
 
             // Section Label
             Row(
               children: [
-                Container(width: 4, height: 16, decoration: BoxDecoration(color: const Color(0xFFD97706), borderRadius: BorderRadius.circular(2))),
+                Container(
+                  width: 4,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD97706),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
                 const SizedBox(width: 8),
                 const Text(
                   'CAMPUS DIRECTORY & HELPLINE',
@@ -253,9 +547,16 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
                   iconColor: const Color(0xFF2563EB),
                   title: 'Visiting Hours',
                   subtitle: 'Mon – Sat:\n8:00 AM – 2:00 PM\n(Closed Sundays)',
-                  actionLabel: 'Front Office',
-                  actionColor: const Color(0xFF64748B),
-                  onTap: null,
+                  actionLabel: 'Front Office ✓',
+                  actionColor: const Color(0xFF2563EB),
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('School Front Office is open Monday to Saturday, 8:00 AM – 2:00 PM.'),
+                        backgroundColor: Color(0xFF1E3A8A),
+                      ),
+                    );
+                  },
                 ),
                 _buildModernCard(
                   icon: Icons.mark_email_read_rounded,
@@ -341,15 +642,21 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
                       const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('ASSESSMENT PORTAL', style: TextStyle(color: Color(0xFFD97706), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.8)),
-                          Text('Online Exam & Practice Tests', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F1E36))),
+                          Text(
+                            'ASSESSMENT PORTAL',
+                            style: TextStyle(color: Color(0xFFD97706), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.8),
+                          ),
+                          Text(
+                            'Online Exam & Practice Tests',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F1E36)),
+                          ),
                         ],
                       ),
                     ],
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'Select your student class to access timed mock examinations and automatic practice evaluation results.',
+                    'Select your student class to launch an interactive mock test with instant evaluation results.',
                     style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.35),
                   ),
                   const SizedBox(height: 12),
@@ -365,7 +672,10 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
                         value: _selectedExamClass,
                         isExpanded: true,
                         items: _examClasses
-                            .map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600))))
+                            .map((c) => DropdownMenuItem(
+                                  value: c,
+                                  child: Text(c, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                                ))
                             .toList(),
                         onChanged: (v) {
                           if (v != null) setState(() => _selectedExamClass = v);
@@ -383,16 +693,9 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                      icon: const Icon(Icons.play_circle_fill_rounded, size: 18),
                       label: const Text('Proceed to Exam Hall', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Connecting to $_selectedExamClass exam module...'),
-                            backgroundColor: const Color(0xFF1E3A8A),
-                          ),
-                        );
-                      },
+                      onPressed: _openInteractiveExamHall,
                     ),
                   ),
                 ],
@@ -504,6 +807,23 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
           ],
         ),
       ),
+    );
+  }
+}
+
+class _StatBadge extends StatelessWidget {
+  final String val;
+  final String label;
+  const _StatBadge({required this.val, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(val, style: const TextStyle(color: Color(0xFFFDE68A), fontWeight: FontWeight.w900, fontSize: 13)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10)),
+      ],
     );
   }
 }
