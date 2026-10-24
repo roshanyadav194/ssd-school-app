@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'school_discovery_screen.dart';
 import 'dashboard_screen.dart';
 import 'admin_hub_screen.dart';
+import 'login_screen.dart';
 
 const String supabaseUrl = 'https://shlzyjkkckmdxolwenvk.supabase.co';
 const String supabaseAnonKey = 'sb_publishable_6yYdqREcVbFa_65ARl1EWA_rGjENe1n';
@@ -18,27 +19,26 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
-  late AnimationController _animController;
+  late AnimationController _bgController;
   late AnimationController _entranceController;
-  late Animation<double> _fadeIn;
-  late Animation<Offset> _slideUp;
-  bool _isCheckingSession = true;
+  late Animation<double> _fadeAnim;
+  late Animation<Offset> _slideAnim;
+  bool _checkingSession = true;
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
+    _bgController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 8),
     )..repeat();
 
     _entranceController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 950),
+      duration: const Duration(milliseconds: 900),
     );
-
-    _fadeIn = CurvedAnimation(parent: _entranceController, curve: Curves.easeOutCubic);
-    _slideUp = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(
+    _fadeAnim = CurvedAnimation(parent: _entranceController, curve: Curves.easeOut);
+    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(
       CurvedAnimation(parent: _entranceController, curve: Curves.easeOutCubic),
     );
 
@@ -48,7 +48,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   @override
   void dispose() {
-    _animController.dispose();
+    _bgController.dispose();
     _entranceController.dispose();
     super.dispose();
   }
@@ -97,24 +97,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     }
 
     if (mounted) {
-      setState(() => _isCheckingSession = false);
+      setState(() => _checkingSession = false);
     }
-  }
-
-  void _navigateToDiscovery() {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 450),
-        pageBuilder: (_, animation, __) => const SchoolDiscoveryScreen(),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(
-            opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-            child: child,
-          );
-        },
-      ),
-    );
   }
 
   @override
@@ -126,18 +110,18 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
           Positioned.fill(
             child: IgnorePointer(
               child: AnimatedBuilder(
-                animation: _animController,
+                animation: _bgController,
                 builder: (context, _) => CustomPaint(
-                  painter: BackgroundAnimationPainter(_animController.value),
+                  painter: BackgroundAnimationPainter(_bgController.value),
                 ),
               ),
             ),
           ),
           SafeArea(
             child: FadeTransition(
-              opacity: _fadeIn,
+              opacity: _fadeAnim,
               child: SlideTransition(
-                position: _slideUp,
+                position: _slideAnim,
                 child: Column(
                   children: [
                     Expanded(
@@ -148,62 +132,47 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const SizedBox(height: 16),
-                            // Status Pill
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1E3A8A).withOpacity(0.08),
-                                borderRadius: BorderRadius.circular(30),
-                                border: Border.all(color: const Color(0xFF1E3A8A).withOpacity(0.18)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 7,
-                                    height: 7,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF10B981),
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'SMART DIGITAL CAMPUS • PRAYAGRAJ',
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w800,
-                                      color: Color(0xFF1E3A8A),
-                                      letterSpacing: 0.9,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            // Institutional Crest Emblem
+                            // Animated Crest Container
                             Container(
                               width: 88,
                               height: 88,
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
-                                  colors: [Color(0xFF1E40AF), Color(0xFF0F1E36)],
+                                  colors: [Color(0xFF1E3A8A), Color(0xFF0F1E36)],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
                                 borderRadius: BorderRadius.circular(24),
                                 boxShadow: const [
                                   BoxShadow(
-                                    color: Color(0x3D1E3A8A),
+                                    color: Color(0x381E3A8A),
                                     blurRadius: 24,
                                     offset: Offset(0, 10),
-                                  )
+                                  ),
                                 ],
-                                border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.45), width: 1.5),
+                                border: Border.all(color: Colors.white, width: 2.5),
                               ),
                               child: const Icon(Icons.school_rounded, color: Colors.white, size: 46),
                             ),
-                            const SizedBox(height: 22),
+                            const SizedBox(height: 20),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF3C7),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: const Color(0xFFFDE68A)),
+                              ),
+                              child: const Text(
+                                'PRAYAGRAJ • AFFILIATED INSTITUTION',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFFB45309),
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
                             const Text(
                               'S.S.D. CONVENT SCHOOL',
                               textAlign: TextAlign.center,
@@ -211,21 +180,20 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                                 fontSize: 23,
                                 fontWeight: FontWeight.w900,
                                 color: Color(0xFF0F1E36),
-                                letterSpacing: 1.0,
+                                letterSpacing: 0.8,
                               ),
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 4),
                             const Text(
                               'Knowledge • Discipline • Future',
                               style: TextStyle(
                                 color: Color(0xFF64748B),
-                                fontSize: 13.5,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                letterSpacing: 0.4,
                               ),
                             ),
                             const SizedBox(height: 28),
-                            // Premium Showcase Card
+                            // Main Campus Showcase Card
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(24),
@@ -239,9 +207,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                                 boxShadow: const [
                                   BoxShadow(
                                     color: Color(0x290F1E36),
-                                    blurRadius: 22,
-                                    offset: Offset(0, 12),
-                                  )
+                                    blurRadius: 20,
+                                    offset: Offset(0, 10),
+                                  ),
                                 ],
                               ),
                               child: Column(
@@ -252,44 +220,59 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                                       color: Colors.white.withOpacity(0.1),
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(Icons.apartment_rounded, color: Color(0xFFFBBF24), size: 42),
+                                    child: const Icon(Icons.apartment_rounded, color: Colors.white, size: 48),
                                   ),
                                   const SizedBox(height: 14),
                                   const Text(
-                                    'S.S.D. CONVENT CAMPUS',
+                                    'S.S.D. SMART CAMPUS PORTAL',
+                                    textAlign: TextAlign.center,
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.w800,
-                                      fontSize: 16,
-                                      letterSpacing: 0.6,
+                                      fontSize: 15,
+                                      letterSpacing: 0.4,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 6),
                                   const Text(
-                                    'Champapur, Handia Road, Janghai, Prayagraj',
+                                    'Real-Time Attendance • Fee Passbook • Exam Marksheets • Campus Circulars',
                                     textAlign: TextAlign.center,
-                                    style: TextStyle(color: Color(0xFF93C5FD), fontSize: 12),
+                                    style: TextStyle(
+                                      color: Color(0xFFBFDBFE),
+                                      fontSize: 12,
+                                      height: 1.4,
+                                    ),
                                   ),
                                   const SizedBox(height: 18),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.07),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(color: Colors.white.withOpacity(0.12)),
-                                    ),
-                                    child: const Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                      children: [
-                                        _SplashHighlightItem(icon: Icons.verified_rounded, label: 'Attendance'),
-                                        _SplashHighlightItem(icon: Icons.receipt_long_rounded, label: 'Fee Ledger'),
-                                        _SplashHighlightItem(icon: Icons.workspace_premium_rounded, label: 'Report Cards'),
-                                      ],
-                                    ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      _buildFeatureBadge(Icons.verified_user_rounded, 'Verified Cloud'),
+                                      _buildFeatureBadge(Icons.picture_as_pdf_rounded, 'PDF Reports'),
+                                      _buildFeatureBadge(Icons.bolt_rounded, 'Live Updates'),
+                                    ],
                                   ),
                                 ],
                               ),
                             ),
+                            if (_checkingSession) ...[
+                              const SizedBox(height: 20),
+                              const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1E3A8A)),
+                                  ),
+                                  SizedBox(width: 10),
+                                  Text(
+                                    'Checking saved session...',
+                                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -297,19 +280,19 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     // Bottom Action Dock
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
                       decoration: const BoxDecoration(
                         color: Color(0xFF0F1E36),
                         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
                         boxShadow: [
-                          BoxShadow(color: Color(0x26000000), blurRadius: 20, offset: Offset(0, -4)),
+                          BoxShadow(color: Color(0x22000000), blurRadius: 20, offset: Offset(0, -4)),
                         ],
                       ),
                       child: Column(
                         children: [
                           SizedBox(
                             width: double.infinity,
-                            height: 54,
+                            height: 52,
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.white,
@@ -317,32 +300,52 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                 elevation: 0,
                               ),
-                              onPressed: _navigateToDiscovery,
-                              child: Row(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const SchoolDiscoveryScreen()),
+                                );
+                              },
+                              child: const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  if (_isCheckingSession) ...[
-                                    const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(strokeWidth: 2.2, color: Color(0xFF1E3A8A)),
-                                    ),
-                                    const SizedBox(width: 12),
-                                  ],
-                                  const Text(
+                                  Text(
                                     'Explore School & Portal',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                                    style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800),
                                   ),
-                                  const SizedBox(width: 8),
-                                  const Icon(Icons.arrow_forward_rounded, size: 19),
+                                  SizedBox(width: 8),
+                                  Icon(Icons.arrow_forward_rounded, size: 19),
                                 ],
                               ),
                             ),
                           ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 46,
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                side: BorderSide(color: Colors.white.withOpacity(0.22)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              ),
+                              icon: const Icon(Icons.login_rounded, size: 18, color: Color(0xFFFBBF24)),
+                              label: const Text(
+                                'Direct Login (Parent / Admin)',
+                                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                              ),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                );
+                              },
+                            ),
+                          ),
                           const SizedBox(height: 12),
                           const Text(
-                            '© S.S.D. Convent School • Cloud Verified Portal',
-                            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.w500),
+                            '© S.S.D. Convent School • Janghai, Prayagraj',
+                            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
                           ),
                         ],
                       ),
@@ -356,25 +359,25 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       ),
     );
   }
-}
 
-class _SplashHighlightItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _SplashHighlightItem({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: const Color(0xFFFBBF24), size: 15),
-        const SizedBox(width: 5),
-        Text(
-          label,
-          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-        ),
-      ],
+  Widget _buildFeatureBadge(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: const Color(0xFFFBBF24), size: 14),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
     );
   }
 }
