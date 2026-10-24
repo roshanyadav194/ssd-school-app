@@ -4,8 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // --- YOUR SUPABASE CREDENTIALS ---
-const String supabaseUrl = 'YOUR_SUPABASE_PROJECT_URL';
-const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_PUBLIC_KEY';
+const String supabaseUrl = 'https://shlzyjkkckmdxolwenvk.supabase.co';
+const String supabaseAnonKey = 'sb_publishable_6yYdqREcVbFa_65ARl1EWA_rGjENe1n';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
