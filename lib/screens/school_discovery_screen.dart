@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'login_screen.dart';
 
@@ -23,35 +24,13 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
     'Class 11th / 12th - Senior Stream Assessment',
   ];
 
-  static const Map<String, List<Map<String, dynamic>>> _mockQuestions = {
-    'default': [
-      {
-        'q': 'Which organelle is known as the powerhouse of the cell?',
-        'options': ['Nucleus', 'Mitochondria', 'Ribosome', 'Golgi Apparatus'],
-        'ans': 1,
-      },
-      {
-        'q': 'If a triangle has angles 60° and 70°, what is the third angle?',
-        'options': ['40°', '50°', '60°', '80°'],
-        'ans': 1,
-      },
-      {
-        'q': 'What is the chemical formula of Baking Soda?',
-        'options': ['Na2CO3', 'NaHCO3', 'NaOH', 'NaCl'],
-        'ans': 1,
-      },
-      {
-        'q': 'Newton’s First Law of Motion is also known as the Law of:',
-        'options': ['Momentum', 'Inertia', 'Gravitation', 'Action-Reaction'],
-        'ans': 1,
-      },
-      {
-        'q': 'Where is S.S.D. Convent School campus situated?',
-        'options': ['Champapur, Janghai, Prayagraj', 'Civil Lines', 'Naini', 'Phulpur'],
-        'ans': 0,
-      },
-    ],
-  };
+  SupabaseClient? get _supabaseClient {
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   void initState() {
@@ -81,12 +60,28 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
     }
   }
 
+  // INTERACTIVE MOCK EXAM HALL MODAL
   void _openInteractiveExamHall() {
-    final questions = _mockQuestions['default']!;
-    int currentIdx = 0;
-    int score = 0;
-    int? selectedOption;
-    bool isCompleted = false;
+    final questions = [
+      {
+        'q': '1. Which organelle is known as the powerhouse of the cell?',
+        'options': ['Nucleus', 'Mitochondria', 'Ribosome', 'Golgi Apparatus'],
+        'ans': 1,
+      },
+      {
+        'q': '2. If a triangle has angles 60° and 70°, what is the third angle?',
+        'options': ['40°', '50°', '60°', '80°'],
+        'ans': 1,
+      },
+      {
+        'q': '3. What is the SI unit of electric current?',
+        'options': ['Volt', 'Ohm', 'Ampere', 'Watt'],
+        'ans': 2,
+      },
+    ];
+
+    final Map<int, int> selectedAnswers = {};
+    bool submitted = false;
 
     showModalBottomSheet(
       context: context,
@@ -97,11 +92,17 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
       ),
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) {
-          final currentQ = questions[currentIdx];
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+          int score = 0;
+          if (submitted) {
+            for (int i = 0; i < questions.length; i++) {
+              if (selectedAnswers[i] == questions[i]['ans']) score++;
+            }
+          }
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.85,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -111,20 +112,26 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'S.S.D. ONLINE ASSESSMENT HALL',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              color: Color(0xFFD97706),
-                              letterSpacing: 0.9,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              _selectedExamClass.toUpperCase(),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFFD97706),
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _selectedExamClass,
-                            style: const TextStyle(
-                              fontSize: 15,
+                          const SizedBox(height: 4),
+                          const Text(
+                            'S.S.D. Online Practice Test',
+                            style: TextStyle(
+                              fontSize: 17,
                               fontWeight: FontWeight.w800,
                               color: Color(0xFF0F1E36),
                             ),
@@ -139,179 +146,144 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
                   ],
                 ),
                 const Divider(height: 20),
-                if (!isCompleted) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Question ${currentIdx + 1} of ${questions.length}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1E3A8A),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Score: $score',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1E3A8A),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: LinearProgressIndicator(
-                      value: (currentIdx + 1) / questions.length,
-                      minHeight: 6,
-                      backgroundColor: const Color(0xFFE2E8F0),
-                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF1E3A8A)),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    currentQ['q'] as String,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F1E36),
-                      height: 1.35,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  ...List.generate((currentQ['options'] as List).length, (idx) {
-                    final opt = (currentQ['options'] as List)[idx] as String;
-                    final isSelected = selectedOption == idx;
-                    return GestureDetector(
-                      onTap: () => setModalState(() => selectedOption = idx),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: isSelected ? const Color(0xFF1E3A8A) : const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: isSelected ? const Color(0xFF1E3A8A) : const Color(0xFFE2E8F0),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 24,
-                              height: 24,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: isSelected ? Colors.white : const Color(0xFFE2E8F0),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Text(
-                                String.fromCharCode(65 + idx),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: isSelected ? const Color(0xFF1E3A8A) : const Color(0xFF475569),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                opt,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: isSelected ? Colors.white : const Color(0xFF0F1E36),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
-                  const SizedBox(height: 10),
-                  SizedBox(
+                if (submitted)
+                  Container(
                     width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0F1E36),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      onPressed: selectedOption == null
-                          ? null
-                          : () {
-                              if (selectedOption == currentQ['ans']) {
-                                score++;
-                              }
-                              if (currentIdx + 1 < questions.length) {
-                                setModalState(() {
-                                  currentIdx++;
-                                  selectedOption = null;
-                                });
-                              } else {
-                                setModalState(() => isCompleted = true);
-                              }
-                            },
-                      child: Text(
-                        currentIdx + 1 == questions.length ? 'Finish & Evaluate' : 'Next Question →',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                    margin: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF10B981)),
                     ),
-                  ),
-                ] else ...[
-                  Center(
-                    child: Column(
+                    child: Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981).withOpacity(0.12),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.emoji_events_rounded, color: Color(0xFF10B981), size: 48),
-                        ),
-                        const SizedBox(height: 14),
-                        const Text(
-                          'Assessment Complete!',
-                          style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Color(0xFF0F1E36)),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'You scored $score out of ${questions.length} (${((score / questions.length) * 100).toInt()}%)',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
-                        ),
-                        const SizedBox(height: 18),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1E3A8A),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        const Icon(Icons.emoji_events_rounded, color: Color(0xFF059669), size: 28),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Assessment Evaluated! You scored $score / ${questions.length} (${((score / questions.length) * 100).toInt()}%)',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF065F46),
+                              fontSize: 13,
                             ),
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('Done', style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-                const SizedBox(height: 8),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: questions.length,
+                    itemBuilder: (context, qIdx) {
+                      final q = questions[qIdx];
+                      final opts = q['options'] as List<String>;
+                      final correctIdx = q['ans'] as int;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              q['q'] as String,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13.5,
+                                color: Color(0xFF0F1E36),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            ...List.generate(opts.length, (optIdx) {
+                              final isSelected = selectedAnswers[qIdx] == optIdx;
+                              Color borderColor = const Color(0xFFCBD5E1);
+                              Color bgColor = Colors.white;
+                              if (submitted) {
+                                if (optIdx == correctIdx) {
+                                  borderColor = const Color(0xFF10B981);
+                                  bgColor = const Color(0xFFECFDF5);
+                                } else if (isSelected && optIdx != correctIdx) {
+                                  borderColor = const Color(0xFFEF4444);
+                                  bgColor = const Color(0xFFFEF2F2);
+                                }
+                              } else if (isSelected) {
+                                borderColor = const Color(0xFF1E3A8A);
+                                bgColor = const Color(0xFFEFF6FF);
+                              }
+
+                              return GestureDetector(
+                                onTap: submitted
+                                    ? null
+                                    : () => setModalState(() => selectedAnswers[qIdx] = optIdx),
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: bgColor,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: borderColor, width: isSelected ? 1.5 : 1),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        isSelected
+                                            ? Icons.radio_button_checked_rounded
+                                            : Icons.radio_button_off_rounded,
+                                        size: 18,
+                                        color: isSelected
+                                            ? const Color(0xFF1E3A8A)
+                                            : const Color(0xFF94A3B8),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          opts[optIdx],
+                                          style: const TextStyle(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E3A8A),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: () {
+                      if (submitted) {
+                        Navigator.pop(ctx);
+                      } else {
+                        setModalState(() => submitted = true);
+                      }
+                    },
+                    child: Text(
+                      submitted ? 'Close Practice Portal' : 'Submit Answers & View Score',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                  ),
+                ),
               ],
             ),
           );
@@ -460,22 +432,6 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
                                 height: 1.4,
                               ),
                             ),
-                            const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.08),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                children: [
-                                  _StatBadge(val: 'Nursery–12', label: 'Classes'),
-                                  _StatBadge(val: '100%', label: 'Smart Support'),
-                                  _StatBadge(val: 'Prayagraj', label: 'Campus'),
-                                ],
-                              ),
-                            ),
                           ],
                         ),
                       ),
@@ -483,6 +439,26 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
                   ),
                 );
               },
+            ),
+
+            const SizedBox(height: 16),
+
+            // ==================== CAMPUS HIGHLIGHTS BAR ====================
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _StatBadge(title: 'Nursery–12th', subtitle: 'Classes'),
+                  _StatBadge(title: 'Smart Labs', subtitle: 'Infrastructure'),
+                  _StatBadge(title: '100% Safe', subtitle: 'Campus & Bus'),
+                ],
+              ),
             ),
 
             const SizedBox(height: 24),
@@ -547,16 +523,9 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
                   iconColor: const Color(0xFF2563EB),
                   title: 'Visiting Hours',
                   subtitle: 'Mon – Sat:\n8:00 AM – 2:00 PM\n(Closed Sundays)',
-                  actionLabel: 'Front Office ✓',
-                  actionColor: const Color(0xFF2563EB),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('School Front Office is open Monday to Saturday, 8:00 AM – 2:00 PM.'),
-                        backgroundColor: Color(0xFF1E3A8A),
-                      ),
-                    );
-                  },
+                  actionLabel: 'Front Office',
+                  actionColor: const Color(0xFF64748B),
+                  onTap: null,
                 ),
                 _buildModernCard(
                   icon: Icons.mark_email_read_rounded,
@@ -586,7 +555,10 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
                       elevation: 2,
                     ),
                     icon: const Icon(Icons.call_rounded, size: 19),
-                    label: const Text('Call School Office', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    label: const Text(
+                      'Call School Office',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
                     onPressed: () => _launchUrl('tel:+917880884750'),
                   ),
                 ),
@@ -601,7 +573,10 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
                       elevation: 2,
                     ),
                     icon: const Icon(Icons.chat_bubble_outline_rounded, size: 19),
-                    label: const Text('WhatsApp Chat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    label: const Text(
+                      'WhatsApp Chat',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
                     onPressed: () => _launchUrl('https://wa.me/917880884750?text=Hello%20SSD%20Convent%20School'),
                   ),
                 ),
@@ -644,11 +619,20 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
                         children: [
                           Text(
                             'ASSESSMENT PORTAL',
-                            style: TextStyle(color: Color(0xFFD97706), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.8),
+                            style: TextStyle(
+                              color: Color(0xFFD97706),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.8,
+                            ),
                           ),
                           Text(
                             'Online Exam & Practice Tests',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F1E36)),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0F1E36),
+                            ),
                           ),
                         ],
                       ),
@@ -656,7 +640,7 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'Select your student class to launch an interactive mock test with instant evaluation results.',
+                    'Select your student class to access timed mock examinations and automatic practice evaluation results.',
                     style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.35),
                   ),
                   const SizedBox(height: 12),
@@ -674,7 +658,10 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
                         items: _examClasses
                             .map((c) => DropdownMenuItem(
                                   value: c,
-                                  child: Text(c, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                                  child: Text(
+                                    c,
+                                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                                  ),
                                 ))
                             .toList(),
                         onChanged: (v) {
@@ -693,13 +680,112 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      icon: const Icon(Icons.play_circle_fill_rounded, size: 18),
-                      label: const Text('Proceed to Exam Hall', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                      label: const Text(
+                        'Proceed to Exam Hall',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
                       onPressed: _openInteractiveExamHall,
                     ),
                   ),
                 ],
               ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // ==================== PUBLIC NOTICE BOARD PREVIEW ====================
+            Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E3A8A),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'LATEST CAMPUS ANNOUNCEMENTS',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.1,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _supabaseClient != null
+                  ? _supabaseClient!
+                      .from('school_notices')
+                      .select()
+                      .order('created_at', ascending: false)
+                      .limit(3)
+                  : Future.value([]),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: const Text(
+                      'Admissions & Academic Portal active for Session 2026–27.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    ),
+                  );
+                }
+                return Column(
+                  children: snapshot.data!.map((n) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              n['tag'] ?? 'NOTICE',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E3A8A),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              n['title'] ?? '',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12.5,
+                                color: Color(0xFF0F1E36),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
             ),
 
             const SizedBox(height: 30),
@@ -731,7 +817,10 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
                 elevation: 0,
               ),
               icon: const Icon(Icons.login_rounded, size: 19),
-              label: const Text('Login to Family Portal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              label: const Text(
+                'Login to Family Portal',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
               onPressed: () {
                 Navigator.push(
                   context,
@@ -789,12 +878,20 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F1E36)),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Color(0xFF0F1E36),
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   subtitle,
-                  style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B), height: 1.3),
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    color: Color(0xFF64748B),
+                    height: 1.3,
+                  ),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -812,17 +909,27 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
 }
 
 class _StatBadge extends StatelessWidget {
-  final String val;
-  final String label;
-  const _StatBadge({required this.val, required this.label});
+  final String title;
+  final String subtitle;
+  const _StatBadge({required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(val, style: const TextStyle(color: Color(0xFFFDE68A), fontWeight: FontWeight.w900, fontSize: 13)),
+        Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 13,
+            color: Color(0xFF1E3A8A),
+          ),
+        ),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10)),
+        Text(
+          subtitle,
+          style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+        ),
       ],
     );
   }
