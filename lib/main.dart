@@ -53,7 +53,7 @@ class SSDConventApp extends StatelessWidget {
 }
 
 // ==========================================
-// 1. SPLASH SCREEN (With Dynamic Background Animation)
+// 1. SPLASH SCREEN
 // ==========================================
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -251,6 +251,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _adminPassController = TextEditingController();
   bool _isLoading = false;
 
+  // PARENT LOGIN VERIFICATION
   Future<void> _handleParentLogin() async {
     final mobile = _mobileController.text.trim();
     final year = _birthYearController.text.trim();
@@ -258,7 +259,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mobile.isEmpty || year.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter both mobile number and birth year'),
+          content: Text('Please enter both mobile number and birth year / DOB'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -270,14 +271,15 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final client = supabaseClient;
       if (client == null) {
-        throw Exception('Database connection not ready. Check internet.');
+        throw Exception('Database connection not ready.');
       }
 
+      // Check if Phone & Birth Year match a student created by the Admin
       final res = await client
           .from('students')
           .select()
           .or('mobile_number.eq.$mobile,parent_phone.eq.$mobile')
-          .filter('birth_year', 'eq', year)
+          .or('birth_year.eq.$year,student_dob.eq.$year')
           .maybeSingle();
 
       setState(() => _isLoading = false);
@@ -286,13 +288,14 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('No student found matching these details. Please verify your details.'),
+            content: Text('No student found matching these details. Please contact school office.'),
             backgroundColor: Colors.red,
           ),
         );
         return;
       }
 
+      // Match found -> open dashboard with that specific student's data
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
@@ -310,6 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // ADMIN LOGIN VERIFICATION
   Future<void> _handleAdminLogin() async {
     final email = _adminIdController.text.trim();
     final password = _adminPassController.text.trim();
@@ -417,11 +421,11 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         const SizedBox(height: 18),
-        const Text("Student's Birth Year", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F1E36))),
+        const Text("Student's Birth Year / DOB", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F1E36))),
         const SizedBox(height: 8),
         TextField(
           controller: _birthYearController,
-          keyboardType: TextInputType.number,
+          keyboardType: TextInputType.text,
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.cake_rounded, color: Color(0xFF1E3A8A), size: 20),
             hintText: 'e.g. 2010',
@@ -802,7 +806,7 @@ class DashboardScreen extends StatelessWidget {
                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F1E36)),
                         ),
                         Text(
-                          'Parent of $studentName (Class $className)',
+                          'Parent of $studentName (Class$className)',
                           style: const TextStyle(color: Color(0xFF1E3A8A), fontSize: 12, fontWeight: FontWeight.w500),
                         ),
                       ],
@@ -953,19 +957,111 @@ class AdminHubScreen extends StatefulWidget {
   State<AdminHubScreen> createState() => _AdminHubScreenState();
 }
 
-class _AdminHubScreenState extends State<AdminHubScreen> {
+class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  // Student form controllers
+  final _studentNameCtrl = TextEditingController();
+  final _parentNameCtrl = TextEditingController();
+  final _classGradeCtrl = TextEditingController();
+  final _parentPhoneCtrl = TextEditingController();
+  final _birthYearCtrl = TextEditingController();
+  bool _isAddingStudent = false;
+
+  // Circular form controllers
   final _titleCtrl = TextEditingController();
   final _contentCtrl = TextEditingController();
   String _selectedTag = 'EXAMS';
-  bool _isPosting = false;
+  bool _isPostingNotice = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _studentNameCtrl.dispose();
+    _parentNameCtrl.dispose();
+    _classGradeCtrl.dispose();
+    _parentPhoneCtrl.dispose();
+    _birthYearCtrl.dispose();
+    _titleCtrl.dispose();
+    _contentCtrl.dispose();
+    super.dispose();
+  }
+
+  // 1. ADMIN REGISTERS A STUDENT (Instantly creates parent login credentials)
+  Future<void> _addNewStudent() async {
+    final sName = _studentNameCtrl.text.trim();
+    final pName = _parentNameCtrl.text.trim();
+    final cGrade = _classGradeCtrl.text.trim();
+    final phone = _parentPhoneCtrl.text.trim();
+    final bYear = _birthYearCtrl.text.trim();
+
+    if (sName.isEmpty || phone.isEmpty || bYear.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter Student Name, Parent Phone, and Birth Year/DOB'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isAddingStudent = true);
+    final client = supabaseClient;
+    if (client == null) {
+      setState(() => _isAddingStudent = false);
+      return;
+    }
+
+    try {
+      await client.from('students').insert({
+        'student_name': sName,
+        'parent_name': pName.isNotEmpty ? pName : 'Parent',
+        'father_name': pName.isNotEmpty ? pName : 'Parent',
+        'class_grade': cGrade.isNotEmpty ? cGrade : 'General',
+        'parent_phone': phone,
+        'mobile_number': phone,
+        'birth_year': bYear,
+        'student_dob': bYear,
+      });
+
+      _studentNameCtrl.clear();
+      _parentNameCtrl.clear();
+      _classGradeCtrl.clear();
+      _parentPhoneCtrl.clear();
+      _birthYearCtrl.clear();
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Student registered! Parent can login using Phone: $phone and Year:$bYear'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error adding student: $e'), backgroundColor: Colors.red),
+      );
+    } finally {
+      setState(() => _isAddingStudent = false);
+    }
+  }
+
+  // 2. BROADCAST CIRCULAR
   Future<void> _publishNotice() async {
     if (_titleCtrl.text.isEmpty || _contentCtrl.text.isEmpty) return;
     final client = supabaseClient;
     if (client == null) return;
 
-    setState(() => _isPosting = true);
-
+    setState(() => _isPostingNotice = true);
     try {
       await client.from('school_notices').insert({
         'tag': _selectedTag,
@@ -977,23 +1073,70 @@ class _AdminHubScreenState extends State<AdminHubScreen> {
       _contentCtrl.clear();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Notice broadcasted to App and Website simultaneously!')),
+        const SnackBar(content: Text('Notice broadcasted to App and Website!'), backgroundColor: Colors.green),
       );
+      setState(() {});
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Notice saved locally (Backend alert: $e)')),
+        SnackBar(content: Text('Notice error: $e'), backgroundColor: Colors.red),
       );
     } finally {
-      setState(() => _isPosting = false);
+      setState(() => _isPostingNotice = false);
     }
   }
 
-  @override
-  void dispose() {
-    _titleCtrl.dispose();
-    _contentCtrl.dispose();
-    super.dispose();
+  void _showAddStudentDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Add Student / Parent Login', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _studentNameCtrl,
+                decoration: const InputDecoration(labelText: 'Student Full Name *', hintText: 'e.g. Vinayak Yadav'),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _parentNameCtrl,
+                decoration: const InputDecoration(labelText: 'Parent Name', hintText: 'e.g. Ramesh Yadav'),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _classGradeCtrl,
+                decoration: const InputDecoration(labelText: 'Class / Section', hintText: 'e.g. 5-B'),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _parentPhoneCtrl,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Parent Phone (Login ID) *', hintText: '10-digit mobile'),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _birthYearCtrl,
+                keyboardType: TextInputType.text,
+                decoration: const InputDecoration(labelText: 'Birth Year / DOB (Login Key) *', hintText: 'e.g. 2015'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
+            onPressed: _isAddingStudent ? null : _addNewStudent,
+            child: _isAddingStudent
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : const Text('Save & Create Login'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -1004,195 +1147,61 @@ class _AdminHubScreenState extends State<AdminHubScreen> {
         title: const Text('Admin Management Hub', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFF0F1E36),
         foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('BROADCAST CIRCULAR', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A))),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: _selectedTag,
-                    items: ['EXAMS', 'HOLIDAY', 'SPORTS', 'URGENT']
-                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                        .toList(),
-                    onChanged: (val) => setState(() => _selectedTag = val!),
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _titleCtrl,
-                    decoration: InputDecoration(
-                      hintText: 'Notice Title',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _contentCtrl,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      hintText: 'Full Announcement Details',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E3A8A),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      onPressed: _isPosting ? null : _publishNotice,
-                      child: _isPosting
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('Publish (Sync to Web & App)', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text('PARENT GRIEVANCES / COMPLAINTS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF64748B))),
-            const SizedBox(height: 10),
-            FutureBuilder<List<Map<String, dynamic>>>(
-              future: supabaseClient != null
-                  ? supabaseClient!.from('school_complaints').select().order('created_at', ascending: false)
-                  : Future.value([]),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                    child: const Text('No complaints submitted.', style: TextStyle(color: Color(0xFF94A3B8))),
-                  );
-                }
-                return Column(
-                  children: snapshot.data!.map((c) => Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFFEE2E2)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(c['category'] ?? 'Complaint', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
-                            Text(c['status'] ?? 'Under Review', style: const TextStyle(fontSize: 11, color: Color(0xFFD97706), fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text('From: ${c['parent_name']} (Student: ${c['student_name']})', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                        const SizedBox(height: 6),
-                        Text(c['details'] ?? '', style: const TextStyle(fontSize: 13)),
-                      ],
-                    ),
-                  )).toList(),
-                );
-              },
-            ),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: const Color(0xFFD97706),
+          labelColor: Colors.white,
+          unselectedLabelColor: const Color(0xFF94A3B8),
+          tabs: const [
+            Tab(icon: Icon(Icons.people_alt_rounded), text: 'Students'),
+            Tab(icon: Icon(Icons.campaign_rounded), text: 'Circulars'),
+            Tab(icon: Icon(Icons.report_problem_rounded), text: 'Complaints'),
           ],
         ),
       ),
-    );
-  }
-}
-
-// ==========================================
-// 5. BACKGROUND ANIMATION PAINTER
-// ==========================================
-class BackgroundAnimationPainter extends CustomPainter {
-  final double progress;
-  BackgroundAnimationPainter(this.progress);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double w = size.width;
-    final double h = size.height;
-
-    // 1. Floating Glowing Blue Orb (Top Left)
-    final orb1X = w * 0.25 + math.cos(progress * 2 * math.pi) * 35;
-    final orb1Y = h * 0.22 + math.sin(progress * 2 * math.pi) * 30;
-    final paint1 = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          const Color(0xFF3B82F6).withOpacity(0.18),
-          const Color(0xFF3B82F6).withOpacity(0.0),
-        ],
-      ).createShader(Rect.fromCircle(center: Offset(orb1X, orb1Y), radius: 140));
-    canvas.drawCircle(Offset(orb1X, orb1Y), 140, paint1);
-
-    // 2. Floating Amber/Gold Orb (Right Center)
-    final orb2X = w * 0.8 + math.sin(progress * 2 * math.pi) * 30;
-    final orb2Y = h * 0.5 + math.cos(progress * 2 * math.pi) * 35;
-    final paint2 = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          const Color(0xFFF59E0B).withOpacity(0.12),
-          const Color(0xFFF59E0B).withOpacity(0.0),
-        ],
-      ).createShader(Rect.fromCircle(center: Offset(orb2X, orb2Y), radius: 120));
-    canvas.drawCircle(Offset(orb2X, orb2Y), 120, paint2);
-
-    // 3. Floating Light Blue Orb (Bottom Left)
-    final orb3X = w * 0.15 + math.sin(progress * 2 * math.pi + 1) * 25;
-    final orb3Y = h * 0.65 + math.cos(progress * 2 * math.pi + 1) * 25;
-    final paint3 = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          const Color(0xFF60A5FA).withOpacity(0.14),
-          const Color(0xFF60A5FA).withOpacity(0.0),
-        ],
-      ).createShader(Rect.fromCircle(center: Offset(orb3X, orb3Y), radius: 110));
-    canvas.drawCircle(Offset(orb3X, orb3Y), 110, paint3);
-
-    // 4. Subtle Floating Particles
-    final particlePaint = Paint()..style = PaintingStyle.fill;
-    final particles = [
-      Offset(w * 0.15, h * 0.15),
-      Offset(w * 0.85, h * 0.18),
-      Offset(w * 0.12, h * 0.45),
-      Offset(w * 0.88, h * 0.38),
-      Offset(w * 0.35, h * 0.72),
-      Offset(w * 0.78, h * 0.70),
-    ];
-
-    for (int i = 0; i < particles.length; i++) {
-      final double offsetPhase = i * (math.pi / 3);
-      final double dy = math.sin((progress * 2 * math.pi) + offsetPhase) * 12;
-      final double dx = math.cos((progress * 2 * math.pi) + offsetPhase) * 8;
-      final double opacity = 0.25 + 0.25 * math.sin((progress * 2 * math.pi) + offsetPhase);
-
-      particlePaint.color = (i % 2 == 0 ? const Color(0xFF1E3A8A) : const Color(0xFFD97706))
-          .withOpacity(opacity.clamp(0.0, 1.0));
-
-      canvas.drawCircle(
-        Offset(particles[i].dx + dx, particles[i].dy + dy),
-        3.0 + (i % 3),
-        particlePaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant BackgroundAnimationPainter oldDelegate) {
-    return oldDelegate.progress != progress;
-  }
-}
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // TAB 1: STUDENT DIRECTORY & PARENT CREDENTIALS
+          Scaffold(
+            backgroundColor: const Color(0xFFF8FAFC),
+            floatingActionButton: FloatingActionButton.extended(
+              backgroundColor: const Color(0xFF1E3A8A),
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.person_add_rounded),
+              label: const Text('Add Student'),
+              onPressed: _showAddStudentDialog,
+            ),
+            body: FutureBuilder<List<Map<String, dynamic>>>(
+              future: supabaseClient != null
+                  ? supabaseClient!.from('students').select().order('created_at', ascending: false)
+                  : Future.value([]),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final students = snapshot.data!;
+                if (students.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24.0),
+                      child: Text('No students added yet. Tap "+ Add Student" below to register one.', textAlign: TextAlign.center),
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: students.length,
+                  itemBuilder: (context, i) {
+                    final s = students[i];
+                    final phone = s['parent_phone'] ?? s['mobile_number'] ?? 'N/A';
+                    final bYear = s['birth_year'] ?? s['student_dob'] ?? 'N/A';
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: const Color(0xFF1E3A8A).withOpacity(0.1),
+                          child: const Icon(Icons.person, color: Color(0xFF1E3A8A)),
+                        ),
+                        title: Text(s['student_name'] ?? 'Student
