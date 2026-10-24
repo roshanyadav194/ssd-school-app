@@ -1,7 +1,11 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'school_discovery_screen.dart';
+import 'dashboard_screen.dart';
+import 'admin_hub_screen.dart';
 
 const String supabaseUrl = 'https://shlzyjkkckmdxolwenvk.supabase.co';
 const String supabaseAnonKey = 'sb_publishable_6yYdqREcVbFa_65ARl1EWA_rGjENe1n';
@@ -23,7 +27,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       vsync: this,
       duration: const Duration(seconds: 8),
     )..repeat();
-    _initBackend();
+    _initApp();
   }
 
   @override
@@ -32,7 +36,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     super.dispose();
   }
 
-  Future<void> _initBackend() async {
+  Future<void> _initApp() async {
     try {
       if (supabaseUrl.startsWith('http')) {
         await Supabase.initialize(
@@ -42,6 +46,37 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       }
     } catch (e) {
       debugPrint('Supabase init notice: $e');
+    }
+
+    // CHECK REMEMBERED LOGIN SESSION
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userType = prefs.getString('saved_user_type');
+
+      if (userType == 'parent') {
+        final rawStudent = prefs.getString('saved_student_data');
+        if (rawStudent != null && mounted) {
+          final studentData = jsonDecode(rawStudent) as Map<String, dynamic>;
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => DashboardScreen(studentData: studentData)),
+            (route) => false,
+          );
+          return;
+        }
+      } else if (userType == 'admin') {
+        final client = Supabase.instance.client;
+        if (client.auth.currentSession != null && mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminHubScreen()),
+            (route) => false,
+          );
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('Auto-login check notice: $e');
     }
   }
 
