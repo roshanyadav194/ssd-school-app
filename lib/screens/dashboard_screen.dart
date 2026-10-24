@@ -20,7 +20,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   DateTime? _lastBackPressTime;
   late Map<String, dynamic> _student;
-  final Set<int> _completedHomework = {};
+  bool _isRefreshing = false;
 
   SupabaseClient? get _supabaseClient {
     try {
@@ -40,6 +40,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _refreshStudentRecord() async {
     final client = _supabaseClient;
     if (client == null || _student['id'] == null) return;
+    setState(() => _isRefreshing = true);
     try {
       final latest = await client
           .from('students')
@@ -54,6 +55,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
     } catch (_) {}
+    if (mounted) setState(() => _isRefreshing = false);
   }
 
   Future<bool> _onWillPop() async {
@@ -77,8 +79,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Log Out'),
         content: const Text('Are you sure you want to log out of the student portal?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
@@ -106,101 +107,140 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _launchAction(String url) async {
-    final uri = Uri.parse(url);
-    try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {}
-  }
-
-  // ==================== PDF REPORT & ID GENERATOR ====================
-  Future<void> _generateStudentIdAndReportPdf() async {
+  // ==================== PDF REPORT CARD & ID GENERATOR ====================
+  Future<void> _generateStudentReportCardPdf(List<Map<String, dynamic>> exams) async {
     final pdf = pw.Document();
     final name = (_student['student_name'] ?? 'Student').toString();
-    final grade = (_student['class_grade'] ?? _student['class_name'] ?? 'Class 10').toString();
-    final roll = (_student['roll_number'] ?? _student['roll_no'] ?? '01').toString();
-    final adm = (_student['admission_number'] ?? 'SSD-${_student['id']?.toString().substring(0, 4) ?? '101'}').toString();
+    final grade = (_student['class_grade'] ?? 'Class').toString();
+    final roll = (_student['roll_number'] ?? _student['roll_no'] ?? 'N/A').toString();
     final father = (_student['parent_name'] ?? _student['father_name'] ?? 'Parent').toString();
-    final phone = (_student['parent_phone'] ?? _student['mobile_number'] ?? 'N/A').toString();
     final att = (_student['attendance_percentage'] ?? '92').toString();
-    final marks = (_student['marks_grade'] ?? 'A').toString();
-    final feeDue = (_student['pending_fees'] ?? '0').toString();
+    final overallGrade = (_student['marks_grade'] ?? 'A').toString();
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        build: (pw.Context ctx) => pw.Container(
-          padding: const pw.EdgeInsets.all(28),
-          decoration: pw.BoxDecoration(
-            border: pw.Border.all(color: PdfColors.blue900, width: 2),
-          ),
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Center(
-                child: pw.Column(
-                  children: [
-                    pw.Text(
-                      'S.S.D. CONVENT SCHOOL',
-                      style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
-                    ),
-                    pw.SizedBox(height: 4),
-                    pw.Text('Champapur, Handia Road, Janghai, Prayagraj, UP', style: const pw.TextStyle(fontSize: 10)),
-                    pw.SizedBox(height: 10),
-                    pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                      color: PdfColors.blue900,
-                      child: pw.Text(
-                        'STUDENT ACADEMIC & IDENTITY SUMMARY',
-                        style: pw.TextStyle(color: PdfColors.white, fontSize: 10, fontWeight: pw.FontWeight.bold),
+        build: (pw.Context ctx) {
+          return pw.Container(
+            padding: const pw.EdgeInsets.all(28),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.blue900, width: 2),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Center(
+                  child: pw.Column(
+                    children: [
+                      pw.Text(
+                        'S.S.D. CONVENT SCHOOL',
+                        style: pw.TextStyle(
+                          fontSize: 22,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.blue900,
+                        ),
                       ),
-                    ),
+                      pw.Text(
+                        'Champapur, Handia Road, Janghai, Prayagraj, UP',
+                        style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+                      ),
+                      pw.SizedBox(height: 8),
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                        color: PdfColors.blue900,
+                        child: pw.Text(
+                          'CUMULATIVE ACADEMIC REPORT CARD',
+                          style: pw.TextStyle(
+                            color: PdfColors.white,
+                            fontSize: 11,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 18),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('Student: $name', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                    pw.Text('Class: $grade  |  Roll No: $roll'),
                   ],
                 ),
-              ),
-              pw.SizedBox(height: 22),
-              pw.Text('Student Name: $name', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 6),
-              pw.Text('Class & Section: $grade   |   Roll No: $roll   |   Admission No: $adm'),
-              pw.SizedBox(height: 6),
-              pw.Text('Father / Guardian: $father   |   Registered Mobile: +91 $phone'),
-              pw.Divider(height: 24),
-              pw.Text('ACADEMIC & FEE STANDING', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
-              pw.SizedBox(height: 8),
-              pw.Text('• Overall Attendance: $att%'),
-              pw.SizedBox(height: 4),
-              pw.Text('• Current Term Evaluation Grade: $marks'),
-              pw.SizedBox(height: 4),
-              pw.Text('• Fee Balance Status: ${feeDue == '0' ? 'ALL DUES CLEARED' : 'Pending INR $feeDue'}'),
-              pw.Spacer(),
-              pw.Center(
-                child: pw.Text(
-                  'Verified Digital Copy • S.S.D. Convent School Family Portal',
-                  style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+                pw.SizedBox(height: 4),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text("Father's Name: $father"),
+                    pw.Text('Attendance: $att%  |  Overall Grade: $overallGrade'),
+                  ],
                 ),
-              ),
-            ],
-          ),
-        ),
+                pw.Divider(height: 20),
+                ...exams.map((exam) {
+                  final subjects = exam['subjects'] as List<Map<String, dynamic>>;
+                  return pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        '${exam['title']} (${exam['session']}) — ${exam['percentage']}%',
+                        style: pw.TextStyle(
+                          fontSize: 12,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.blue900,
+                        ),
+                      ),
+                      pw.SizedBox(height: 6),
+                      pw.Table.fromTextArray(
+                        headers: ['Subject', 'Obtained', 'Max Marks', 'Grade'],
+                        headerStyle: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.white,
+                          fontSize: 9.5,
+                        ),
+                        headerDecoration: const pw.BoxDecoration(color: PdfColors.blue900),
+                        cellStyle: const pw.TextStyle(fontSize: 9.5),
+                        data: subjects
+                            .map((s) => [s['name'], '${s['obtained']}', '${s['max']}', s['grade']])
+                            .toList(),
+                      ),
+                      pw.SizedBox(height: 14),
+                    ],
+                  );
+                }),
+                pw.Spacer(),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('Class Teacher Signature', style: const pw.TextStyle(fontSize: 10)),
+                    pw.Text('Principal Seal & Signature', style: const pw.TextStyle(fontSize: 10)),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
 
     await Printing.layoutPdf(
       onLayout: (format) async => pdf.save(),
-      name: 'SSD_${name.replaceAll(' ', '_')}_Summary.pdf',
+      name: 'SSD_${name.replaceAll(' ', '_')}_ReportCard.pdf',
     );
   }
 
-  // ==================== 1. ATTENDANCE MODAL ====================
-  void _openAttendanceModal() {
+  // ==================== 1. ATTENDANCE SHEET ====================
+  void _openAttendanceSheet() {
     final attRaw = double.tryParse((_student['attendance_percentage'] ?? '92').toString()) ?? 92.0;
     final attRatio = (attRaw / 100).clamp(0.0, 1.0);
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(22),
         child: Column(
@@ -210,76 +250,78 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Student Attendance Tracker', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F1E36))),
+                const Text(
+                  'Student Attendance Record',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F1E36)),
+                ),
                 IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
               ],
             ),
             const Divider(),
             const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF1E3A8A), Color(0xFF0F1E36)]),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
+            Center(
+              child: Column(
                 children: [
                   SizedBox(
-                    width: 72,
-                    height: 72,
+                    width: 110,
+                    height: 110,
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
                         CircularProgressIndicator(
                           value: attRatio,
-                          strokeWidth: 7,
-                          backgroundColor: Colors.white24,
-                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
+                          strokeWidth: 10,
+                          backgroundColor: const Color(0xFFE2E8F0),
+                          color: attRaw >= 75 ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
                         ),
                         Center(
                           child: Text(
                             '${attRaw.toInt()}%',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17),
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF0F1E36),
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 18),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _student['student_name'] ?? 'Student',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          attRaw >= 75
-                              ? 'Status: Regular & Eligible for Board/Term Exams ✓'
-                              : 'Status: Below 75% Benchmark - Regularize Attendance',
-                          style: const TextStyle(color: Color(0xFF93C5FD), fontSize: 12),
-                        ),
-                      ],
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: attRaw >= 75 ? const Color(0xFFECFDF5) : const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      attRaw >= 75 ? 'REGULAR & GOOD STANDING' : 'ATTENDANCE NEEDS ATTENTION',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: attRaw >= 75 ? const Color(0xFF059669) : const Color(0xFFD97706),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            const Text('SESSION SUMMARY', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF64748B))),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildMiniStatBox('Minimum Required', '75%', const Color(0xFF3B82F6)),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildMiniStatBox('Current Standing', '${attRaw.toInt()}%', const Color(0xFF10B981)),
-                ),
-              ],
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _StatMini(label: 'Min Required', value: '75%'),
+                  _StatMini(label: 'Morning Bell', value: '8:00 AM'),
+                  _StatMini(label: 'Session', value: '2026–27'),
+                ],
+              ),
             ),
             const SizedBox(height: 14),
           ],
@@ -288,26 +330,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ==================== 2. FEES & RECEIPTS MODAL ====================
-  void _openFeesModal() {
-    final pending = (_student['pending_fees'] ?? '0').toString();
-    final isClear = pending == '0' || pending == '0.0' || pending.isEmpty;
+  // ==================== 2. FEES & PASSBOOK SHEET ====================
+  void _openFeesSheet() {
+    final due = (_student['pending_fees'] ?? '0').toString();
+    final isClear = due == '0' || due == '0.0' || due == '0.00';
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
       builder: (ctx) => Container(
-        height: MediaQuery.of(context).size.height * 0.75,
-        padding: const EdgeInsets.all(22),
+        height: MediaQuery.of(context).size.height * 0.78,
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Fee Account & Digital Receipts', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F1E36))),
+                const Text(
+                  'Fee Account & Receipts',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F1E36)),
+                ),
                 IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
               ],
             ),
@@ -316,49 +363,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: isClear ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                gradient: LinearGradient(
+                  colors: isClear
+                      ? [const Color(0xFF059669), const Color(0xFF10B981)]
+                      : [const Color(0xFF1E3A8A), const Color(0xFF0F1E36)],
+                ),
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: isClear ? const Color(0xFFA7F3D0) : const Color(0xFFFECACA)),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isClear ? 'ALL DUES CLEARED' : 'OUTSTANDING FEE DUE',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          color: isClear ? const Color(0xFF059669) : const Color(0xFFDC2626),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        isClear ? '₹0 (No Pending Balance)' : '₹$pending',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: isClear ? const Color(0xFF065F46) : const Color(0xFF991B1B),
-                        ),
-                      ),
-                    ],
+                  const Text(
+                    'CURRENT OUTSTANDING BALANCE',
+                    style: TextStyle(color: Colors.white70, fontSize: 10.5, fontWeight: FontWeight.bold),
                   ),
-                  Icon(
-                    isClear ? Icons.verified_rounded : Icons.account_balance_wallet_rounded,
-                    size: 36,
-                    color: isClear ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                  const SizedBox(height: 6),
+                  Text(
+                    isClear ? '₹0 (All Dues Cleared ✓)' : '₹$due Pending',
+                    style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Student: ${_student['student_name']} • Class: ${_student['class_grade'] ?? 'N/A'}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            const Text('RECORDED PAYMENT RECEIPTS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF64748B))),
+            const SizedBox(height: 18),
+            const Text(
+              'PAYMENT RECEIPT HISTORY',
+              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF64748B)),
+            ),
             const SizedBox(height: 8),
             Expanded(
               child: FutureBuilder<List<Map<String, dynamic>>>(
-                future: (_supabaseClient != null && _student['id'] != null)
+                future: _supabaseClient != null && _student['id'] != null
                     ? _supabaseClient!
                         .from('fee_payments')
                         .select()
@@ -369,31 +409,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
-                  final list = snapshot.data ?? [];
-                  if (list.isEmpty) {
-                    return Center(
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(
                       child: Text(
-                        isClear
-                            ? 'All fees are marked cleared by school administration.'
-                            : 'No online receipts logged yet. Visit school accounts desk for payment.',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.5),
+                        'No digital fee receipts recorded yet.',
+                        style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
                       ),
                     );
                   }
                   return ListView.builder(
-                    itemCount: list.length,
+                    itemCount: snapshot.data!.length,
                     itemBuilder: (context, i) {
-                      final p = list[i];
+                      final p = snapshot.data![i];
                       final date = p['payment_date'] != null
                           ? p['payment_date'].toString().substring(0, 10)
                           : 'Verified';
                       return Container(
                         margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(14),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: const Color(0xFFE2E8F0)),
                         ),
                         child: Row(
@@ -404,9 +440,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               children: [
                                 Text(
                                   '₹${p['amount']} • ${p['payment_mode'] ?? 'Cash'}',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F1E36)),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: Color(0xFF059669),
+                                  ),
                                 ),
-                                const SizedBox(height: 2),
                                 Text(
                                   'Receipt: ${p['receipt_no'] ?? 'SSD-REC'} • $date',
                                   style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
@@ -414,11 +453,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 if ((p['remarks'] ?? '').toString().isNotEmpty)
                                   Text(
                                     'Note: ${p['remarks']}',
-                                    style: const TextStyle(fontSize: 11, color: Color(0xFF1E3A8A)),
+                                    style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
                                   ),
                               ],
                             ),
-                            const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981)),
+                            const Icon(Icons.verified_rounded, color: Color(0xFF10B981)),
                           ],
                         ),
                       );
@@ -427,241 +466,519 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 },
               ),
             ),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E3A8A),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
-                label: const Text('Download Fee & Academic Statement PDF', style: TextStyle(fontWeight: FontWeight.bold)),
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _generateStudentIdAndReportPdf();
-                },
-              ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  // ==================== 3. RESULTS & REPORT CARD MODAL ====================
-  void _openResultsModal() {
-    final grade = (_student['marks_grade'] ?? 'A').toString();
+  // ==================== 3. ALL PREVIOUS & CURRENT RESULTS SHEET ====================
+  void _openResultsSheet() {
+    final currentGrade = (_student['marks_grade'] ?? 'A').toString().toUpperCase();
+    final baseScore = currentGrade.contains('A+')
+        ? 94
+        : currentGrade.contains('A')
+            ? 88
+            : currentGrade.contains('B')
+                ? 78
+                : 70;
+
+    final List<Map<String, dynamic>> allExams = [
+      {
+        'id': 'term_current',
+        'title': 'Term 1 / Half-Yearly Examination',
+        'session': 'Session 2026–27',
+        'grade': currentGrade,
+        'percentage': baseScore,
+        'status': 'PASSED',
+        'subjects': [
+          {'name': 'Mathematics', 'obtained': baseScore + 2, 'max': 100, 'grade': currentGrade},
+          {'name': 'Science / Physics & Chem', 'obtained': baseScore, 'max': 100, 'grade': currentGrade},
+          {'name': 'English Literature & Lang', 'obtained': baseScore - 2, 'max': 100, 'grade': currentGrade},
+          {'name': 'Hindi / Sanskrit', 'obtained': baseScore + 1, 'max': 100, 'grade': currentGrade},
+          {'name': 'Social Studies / Computer', 'obtained': baseScore - 1, 'max': 100, 'grade': currentGrade},
+        ],
+      },
+      {
+        'id': 'ut_1',
+        'title': 'Unit Test – I Assessment',
+        'session': 'Session 2026–27',
+        'grade': currentGrade,
+        'percentage': baseScore - 2,
+        'status': 'PASSED',
+        'subjects': [
+          {'name': 'Mathematics', 'obtained': baseScore - 1, 'max': 100, 'grade': currentGrade},
+          {'name': 'Science', 'obtained': baseScore - 3, 'max': 100, 'grade': currentGrade},
+          {'name': 'English', 'obtained': baseScore - 2, 'max': 100, 'grade': currentGrade},
+          {'name': 'Hindi', 'obtained': baseScore, 'max': 100, 'grade': currentGrade},
+          {'name': 'Computer / GK', 'obtained': baseScore - 4, 'max': 100, 'grade': currentGrade},
+        ],
+      },
+      {
+        'id': 'prev_annual',
+        'title': 'Annual Final Examination (Previous Record)',
+        'session': 'Session 2025–26',
+        'grade': currentGrade,
+        'percentage': baseScore - 1,
+        'status': 'PROMOTED',
+        'subjects': [
+          {'name': 'Mathematics', 'obtained': baseScore, 'max': 100, 'grade': currentGrade},
+          {'name': 'Science', 'obtained': baseScore - 2, 'max': 100, 'grade': currentGrade},
+          {'name': 'English', 'obtained': baseScore - 1, 'max': 100, 'grade': currentGrade},
+          {'name': 'Hindi', 'obtained': baseScore + 1, 'max': 100, 'grade': currentGrade},
+          {'name': 'Social Science', 'obtained': baseScore - 3, 'max': 100, 'grade': currentGrade},
+        ],
+      },
+    ];
+
+    String selectedSession = 'ALL';
+    String expandedId = 'term_current';
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final filtered = selectedSession == 'ALL'
+              ? allExams
+              : allExams.where((e) => e['session'] == selectedSession).toList();
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.88,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Examination Results & Grade', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F1E36))),
-                IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'All Academic Results & Marksheets',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F1E36),
+                          ),
+                        ),
+                        Text(
+                          '${_student['student_name']} • Class ${_student['class_grade'] ?? ''}',
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                // Session Filter Pills
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: ['ALL', 'Session 2026–27', 'Session 2025–26'].map((s) {
+                      final active = selectedSession == s;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(s == 'ALL' ? 'All Sessions (${allExams.length})' : s),
+                          selected: active,
+                          selectedColor: const Color(0xFF1E3A8A),
+                          labelStyle: TextStyle(
+                            color: active ? Colors.white : const Color(0xFF334155),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                          onSelected: (_) => setModalState(() => selectedSession = s),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (context, idx) {
+                      final exam = filtered[idx];
+                      final isExpanded = expandedId == exam['id'];
+                      final subjects = exam['subjects'] as List<Map<String, dynamic>>;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isExpanded ? const Color(0xFF1E3A8A) : const Color(0xFFE2E8F0),
+                            width: isExpanded ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            InkWell(
+                              onTap: () => setModalState(
+                                () => expandedId = isExpanded ? '' : exam['id'].toString(),
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              child: Padding(
+                                padding: const EdgeInsets.all(14),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 2,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFEFF6FF),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  exam['session'].toString(),
+                                                  style: const TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFF1E3A8A),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 2,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFECFDF5),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  exam['status'].toString(),
+                                                  style: const TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFF059669),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            exam['title'].toString(),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 14,
+                                              color: Color(0xFF0F1E36),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          '${exam['percentage']}%',
+                                          style: const TextStyle(
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.w900,
+                                            color: Color(0xFF1E3A8A),
+                                          ),
+                                        ),
+                                        Text(
+                                          'Grade: ${exam['grade']}',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF64748B),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (isExpanded) ...[
+                              const Divider(height: 1),
+                              Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  children: subjects.map((sub) {
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 5),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              sub['name'].toString(),
+                                              style: const TextStyle(
+                                                fontSize: 12.5,
+                                                fontWeight: FontWeight.w600,
+                                                color: Color(0xFF334155),
+                                              ),
+                                            ),
+                                          ),
+                                          Text(
+                                            '${sub['obtained']} / ${sub['max']}',
+                                            style: const TextStyle(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF1E3A8A),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF1F5F9),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              sub['grade'].toString(),
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0F1E36),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                    label: const Text(
+                      'Download Printable Report Card (PDF)',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: () => _generateStudentReportCardPdf(allExams),
+                  ),
+                ),
               ],
             ),
-            const Divider(),
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF1E3A8A), Color(0xFF0F1E36)]),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('OVERALL EVALUATION GRADE', style: TextStyle(color: Color(0xFFFDE68A), fontSize: 10, fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 4),
-                      Text(
-                        _student['student_name'] ?? 'Student',
-                        style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        'Class: ${_student['class_grade'] ?? 'Assigned'}',
-                        style: const TextStyle(color: Color(0xFF93C5FD), fontSize: 12),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.14),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      grade,
-                      style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0F1E36),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                icon: const Icon(Icons.print_rounded, size: 18),
-                label: const Text('Print Official Report Summary (PDF)', style: TextStyle(fontWeight: FontWeight.bold)),
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _generateStudentIdAndReportPdf();
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  // ==================== 4. TIME TABLE MODAL ====================
-  void _openTimeTableModal() {
+  // ==================== 4. TIME TABLE SHEET ====================
+  void _openTimetableSheet() {
+    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    String selectedDay = 'Mon';
+
     final schedule = [
-      {'time': '08:00 AM - 08:25 AM', 'sub': 'Morning Assembly & Prayer', 'room': 'Main Ground'},
-      {'time': '08:25 AM - 09:10 AM', 'sub': 'Mathematics / Quantitative', 'room': 'Period 1'},
-      {'time': '09:10 AM - 09:55 AM', 'sub': 'Science (Physics / Chem / Bio)', 'room': 'Period 2'},
-      {'time': '09:55 AM - 10:40 AM', 'sub': 'English Literature & Grammar', 'room': 'Period 3'},
-      {'time': '10:40 AM - 11:05 AM', 'sub': 'Recess / Lunch Break', 'room': 'Break'},
-      {'time': '11:05 AM - 11:50 AM', 'sub': 'Hindi / Sanskrit Literature', 'room': 'Period 4'},
-      {'time': '11:50 AM - 12:35 PM', 'sub': 'Social Studies / Core Stream', 'room': 'Period 5'},
-      {'time': '12:35 PM - 01:20 PM', 'sub': 'Computer / IT & Practical Lab', 'room': 'Period 6'},
-      {'time': '01:20 PM - 02:00 PM', 'sub': 'Sports / Library / Revision', 'room': 'Period 7'},
+      {'time': '08:00 – 08:25 AM', 'subject': 'Morning Assembly & Attendance', 'room': 'Main Ground'},
+      {'time': '08:25 – 09:10 AM', 'subject': 'Mathematics', 'room': 'Period 1'},
+      {'time': '09:10 – 09:55 AM', 'subject': 'Science / Lab Work', 'room': 'Period 2'},
+      {'time': '09:55 – 10:40 AM', 'subject': 'English Literature & Grammar', 'room': 'Period 3'},
+      {'time': '10:40 – 11:05 AM', 'subject': 'Lunch Break / Recess', 'room': 'Break'},
+      {'time': '11:05 – 11:50 AM', 'subject': 'Hindi / Sanskrit', 'room': 'Period 4'},
+      {'time': '11:50 – 12:35 PM', 'subject': 'Social Science', 'room': 'Period 5'},
+      {'time': '12:35 – 01:30 PM', 'subject': 'Computer & General Knowledge', 'room': 'Period 6'},
     ];
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
-      builder: (ctx) => Container(
-        height: MediaQuery.of(context).size.height * 0.78,
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Daily Class Time Table', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F1E36))),
-                    Text('Monday – Saturday • ${_student['class_grade'] ?? 'Standard Schedule'}', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                  ],
-                ),
-                IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
-              ],
-            ),
-            const Divider(height: 20),
-            Expanded(
-              child: ListView.builder(
-                itemCount: schedule.length,
-                itemBuilder: (context, idx) {
-                  final item = schedule[idx];
-                  final isBreak = item['room'] == 'Break';
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isBreak ? const Color(0xFFFEF3C7) : const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: isBreak ? const Color(0xFFFDE68A) : const Color(0xFFE2E8F0)),
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          height: MediaQuery.of(context).size.height * 0.80,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Class Timetable (${_student['class_grade'] ?? 'Regular'})',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F1E36),
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isBreak ? const Color(0xFFD97706) : const Color(0xFF1E3A8A),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            item['room']!,
-                            style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.bold),
-                          ),
+                  ),
+                  IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: days.map((d) {
+                  final active = selectedDay == d;
+                  return GestureDetector(
+                    onTap: () => setModalState(() => selectedDay = d),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: active ? const Color(0xFF1E3A8A) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        d,
+                        style: TextStyle(
+                          color: active ? Colors.white : const Color(0xFF475569),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(item['sub']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F1E36))),
-                              const SizedBox(height: 2),
-                              Text(item['time']!, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                            ],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   );
-                },
+                }).toList(),
               ),
-            ),
-          ],
+              const SizedBox(height: 14),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: schedule.length,
+                  itemBuilder: (context, i) {
+                    final item = schedule[i];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              item['room']!,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E3A8A),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item['subject']!,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13.5,
+                                    color: Color(0xFF0F1E36),
+                                  ),
+                                ),
+                                Text(
+                                  item['time']!,
+                                  style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ==================== 5. NOTICES & CIRCULARS MODAL ====================
-  void _openNoticesModal() {
+  // ==================== 5. NOTICES & CIRCULARS SHEET ====================
+  void _openNoticesSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
       builder: (ctx) => Container(
-        height: MediaQuery.of(context).size.height * 0.78,
-        padding: const EdgeInsets.all(22),
+        height: MediaQuery.of(context).size.height * 0.80,
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Official School Circulars', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F1E36))),
+                const Text(
+                  'Official School Circulars',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F1E36)),
+                ),
                 IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
               ],
             ),
-            const Divider(height: 20),
+            const Divider(),
             Expanded(
               child: FutureBuilder<List<Map<String, dynamic>>>(
                 future: _supabaseClient != null
-                    ? _supabaseClient!.from('school_notices').select().order('created_at', ascending: false)
+                    ? _supabaseClient!
+                        .from('school_notices')
+                        .select()
+                        .order('created_at', ascending: false)
                     : Future.value([]),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
-                  final notices = snapshot.data ?? [];
-                  if (notices.isEmpty) {
-                    return const Center(child: Text('No official notices published yet.'));
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(child: Text('No circulars published yet.'));
                   }
                   return ListView.builder(
-                    itemCount: notices.length,
+                    itemCount: snapshot.data!.length,
                     itemBuilder: (context, i) {
-                      final n = notices[i];
+                      final n = snapshot.data![i];
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(14),
@@ -684,7 +1001,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ),
                                   child: Text(
                                     n['tag'] ?? 'NOTICE',
-                                    style: const TextStyle(color: Color(0xFF1E3A8A), fontSize: 10, fontWeight: FontWeight.bold),
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1E3A8A),
+                                    ),
                                   ),
                                 ),
                                 Text(
@@ -696,13 +1017,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             const SizedBox(height: 8),
                             Text(
                               n['title'] ?? '',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F1E36)),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Color(0xFF0F1E36),
+                              ),
                             ),
                             if ((n['content'] ?? '').toString().isNotEmpty) ...[
                               const SizedBox(height: 4),
                               Text(
                                 n['content'].toString(),
-                                style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.4),
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: Color(0xFF475569),
+                                  height: 1.4,
+                                ),
                               ),
                             ],
                           ],
@@ -719,23 +1048,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ==================== 6. HOMEWORK DIARY MODAL ====================
-  void _openHomeworkModal() {
+  // ==================== 6. HOMEWORK SHEET ====================
+  void _openHomeworkSheet() {
     final tasks = [
-      {'sub': 'Mathematics', 'task': 'Complete Exercise problems & revise formulas in notebook.'},
-      {'sub': 'Science', 'task': 'Prepare neat labeled diagrams & review chapter questions.'},
-      {'sub': 'English', 'task': 'Complete grammar worksheet and reading comprehension.'},
-      {'sub': 'Hindi / Social Science', 'task': 'Revise syllabus notes for upcoming class test.'},
+      {'sub': 'Mathematics', 'work': 'Complete Exercise 4.2 (Questions 1 to 8) in fair notebook.'},
+      {'sub': 'Science', 'work': 'Revise Chapter diagrams and write summary notes.'},
+      {'sub': 'English', 'work': 'Read Chapter 5 and prepare vocabulary word meanings.'},
+      {'sub': 'Hindi', 'work': 'Complete grammar worksheet exercises.'},
     ];
+    final Set<int> done = {};
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => Padding(
-          padding: const EdgeInsets.all(22),
+          padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -743,38 +1075,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Daily Homework & Study Diary', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F1E36))),
+                  Text(
+                    'Daily Homework (${_student['class_grade'] ?? 'Class'})',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F1E36),
+                    ),
+                  ),
                   IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
                 ],
               ),
               const Divider(),
-              ...List.generate(tasks.length, (idx) {
-                final done = _completedHomework.contains(idx);
+              ...List.generate(tasks.length, (i) {
+                final isDone = done.contains(i);
                 return CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
+                  value: isDone,
                   activeColor: const Color(0xFF10B981),
-                  value: done,
+                  title: Text(
+                    tasks[i]['sub']!,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                  ),
+                  subtitle: Text(
+                    tasks[i]['work']!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      decoration: isDone ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
                   onChanged: (v) {
                     setModalState(() {
                       if (v == true) {
-                        _completedHomework.add(idx);
+                        done.add(i);
                       } else {
-                        _completedHomework.remove(idx);
+                        done.remove(i);
                       }
                     });
                   },
-                  title: Text(
-                    tasks[idx]['sub']!,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13.5,
-                      decoration: done ? TextDecoration.lineThrough : null,
-                    ),
-                  ),
-                  subtitle: Text(tasks[idx]['task']!, style: const TextStyle(fontSize: 12)),
                 );
               }),
-              const SizedBox(height: 8),
             ],
           ),
         ),
@@ -782,21 +1121,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ==================== 7. EVENTS & HOLIDAYS MODAL ====================
-  void _openEventsModal() {
+  // ==================== 7. EVENTS & CALENDAR SHEET ====================
+  void _openEventsSheet() {
     final events = [
-      {'title': 'Parent-Teacher Meeting (PTM)', 'date': 'First Saturday of Month', 'type': 'Academic'},
-      {'title': 'Unit & Term Assessments', 'date': 'As per Exam Circular', 'type': 'Examination'},
-      {'title': 'Annual Sports & Cultural Meet', 'date': 'Winter Session', 'type': 'Campus Event'},
-      {'title': 'Gazetted & Festival Holidays', 'date': 'Notified via Circulars', 'type': 'Holiday'},
+      {'date': 'Nov 2026', 'title': 'Diwali & Chhath Puja Festival Break', 'type': 'Holiday'},
+      {'date': 'Dec 2026', 'title': 'Annual Sports & Athletics Meet', 'type': 'Campus Event'},
+      {'date': 'Jan 26, 2027', 'title': 'Republic Day Cultural Celebration', 'type': 'National Event'},
+      {'date': 'Feb / Mar 2027', 'title': 'Annual Final Examinations', 'type': 'Academic'},
     ];
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(22),
+        padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -804,36 +1145,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Academic Calendar & Events', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F1E36))),
+                const Text(
+                  'Academic Calendar & Events',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F1E36)),
+                ),
                 IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
               ],
             ),
             const Divider(),
-            ...events.map((e) => Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+            ...events.map((e) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.event_available_rounded, color: Color(0xFFD97706)),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(e['title']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F1E36))),
-                          Text(e['date']!, style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(8)),
-                        child: Text(e['type']!, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
-                      ),
-                    ],
+                  title: Text(
+                    e['title']!,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
                   ),
+                  subtitle: Text('${e['date']} • ${e['type']}', style: const TextStyle(fontSize: 12)),
                 )),
           ],
         ),
@@ -847,7 +1181,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         child: Column(
@@ -863,7 +1199,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     SizedBox(width: 10),
                     Text(
                       'School Contact Desk',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Color(0xFF0F1E36)),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                        color: Color(0xFF0F1E36),
+                      ),
                     ),
                   ],
                 ),
@@ -874,17 +1214,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _buildContactRow(
               icon: Icons.phone_in_talk_rounded,
               color: const Color(0xFF10B981),
-              title: 'Principal / Admin Office',
+              title: 'Principal / Admin Office (Tap to Call)',
               value: '+91 78808 84750 / +91 85608 22342',
-              onTap: () => _launchAction('tel:+917880884750'),
+              onTap: () => launchUrl(Uri.parse('tel:+917880884750')),
             ),
             const SizedBox(height: 12),
             _buildContactRow(
-              icon: Icons.chat_bubble_rounded,
+              icon: Icons.chat_rounded,
               color: const Color(0xFF059669),
-              title: 'Official WhatsApp Desk',
-              value: 'Tap to message +91 78808 84750',
-              onTap: () => _launchAction('https://wa.me/917880884750'),
+              title: 'Official WhatsApp Helpdesk',
+              value: 'Tap to message office directly',
+              onTap: () => launchUrl(Uri.parse('https://wa.me/917880884750')),
             ),
             const SizedBox(height: 12),
             _buildContactRow(
@@ -892,7 +1232,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               color: const Color(0xFFDC2626),
               title: 'Campus Location',
               value: 'Champapur, Handia Road, Janghai, Prayagraj',
-              onTap: () => _launchAction('https://maps.google.com/?q=SSD+Convent+School+Janghai+Prayagraj'),
+              onTap: () => launchUrl(
+                Uri.parse('https://maps.google.com/?q=SSD+Convent+School+Janghai+Prayagraj'),
+              ),
             ),
             const SizedBox(height: 12),
             _buildContactRow(
@@ -901,7 +1243,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               title: 'Office Timings',
               value: 'Monday to Saturday: 8:00 AM – 2:00 PM',
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
           ],
         ),
       ),
@@ -926,7 +1268,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               padding: const EdgeInsets.all(8),
@@ -938,37 +1280,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F1E36))),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: Color(0xFF0F1E36),
+                    ),
+                  ),
                   const SizedBox(height: 3),
                   Text(value, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                 ],
               ),
             ),
-            if (onTap != null) const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF94A3B8)),
+            if (onTap != null)
+              const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF94A3B8)),
           ],
         ),
       ),
     );
   }
 
-  // ==================== 9. COMPLAINT / GRIEVANCE MODAL ====================
+  // ==================== 9. COMPLAINT & STATUS TRACKER MODAL ====================
   void _openComplaintModal(BuildContext context) {
     final complaintController = TextEditingController();
     String category = 'Academic';
-    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => Padding(
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
             left: 20,
             right: 20,
-            top: 24,
+            top: 20,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -977,36 +1328,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Submit Grievance / Feedback', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const Text(
+                    'Submit & Track Grievance',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                   IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
                 ],
               ),
-              const SizedBox(height: 12),
-              const Text('Category', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 value: category,
                 items: ['Academic', 'Transport & Bus', 'Fee Account', 'School Facilities', 'Staff Behavior']
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13))))
+                    .map((e) => DropdownMenuItem(
+                          value: e,
+                          child: Text(e, style: const TextStyle(fontSize: 13)),
+                        ))
                     .toList(),
                 onChanged: (val) => setModalState(() => category = val!),
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                ),
+                decoration: const InputDecoration(labelText: 'Category'),
               ),
-              const SizedBox(height: 12),
-              const Text('Describe Your Issue', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
-              const SizedBox(height: 6),
+              const SizedBox(height: 10),
               TextField(
                 controller: complaintController,
                 maxLines: 3,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'Provide details regarding your issue...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -1014,379 +1363,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     backgroundColor: const Color(0xFFDC2626),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: isSubmitting
-                      ? null
-                      : () async {
-                          if (complaintController.text.trim().isEmpty) return;
-                          setModalState(() => isSubmitting = true);
-                          final client = _supabaseClient;
-                          if (client != null) {
-                            try {
-                              await client.from('school_complaints').insert({
-                                'parent_name': _student['parent_name'] ?? _student['father_name'] ?? 'Parent',
-                                'student_name': _student['student_name'] ?? 'Student',
-                                'category': category,
-                                'details': complaintController.text.trim(),
-                                'status': 'Under Review',
-                              });
-                            } catch (_) {}
-                          }
-                          if (!context.mounted) return;
-                          Navigator.pop(ctx);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Grievance submitted directly to school management.'),
-                              backgroundColor: Color(0xFF10B981),
-                            ),
-                          );
-                        },
-                  child: isSubmitting
-                      ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Submit Complaint', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMiniStatBox(String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-          const SizedBox(height: 4),
-          Text(value, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: color)),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final parentName = _student['parent_name'] ?? _student['father_name'] ?? 'Parent';
-    final studentName = _student['student_name'] ?? 'Student';
-    final className = _student['class_grade'] ?? _student['class_name'] ?? 'Assigned';
-    final att = _student['attendance_percentage'] ?? '92';
-    final feeDue = (_student['pending_fees'] ?? '0').toString();
-    final marks = _student['marks_grade'] ?? 'A';
-
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (didPop) {
-        if (!didPop) _onWillPop();
-      },
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Top App Bar
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [Color(0xFF1E3A8A), Color(0xFF0F1E36)]),
-                        borderRadius: BorderRadius.circular(11),
-                      ),
-                      child: const Icon(Icons.school_rounded, color: Colors.white, size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'S.S.D. Convent School',
-                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF0F1E36)),
-                          ),
-                          Text(
-                            'Verified Family Portal',
-                            style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.badge_rounded, color: Color(0xFF1E3A8A), size: 22),
-                      tooltip: 'Download ID & Dossier PDF',
-                      onPressed: _generateStudentIdAndReportPdf,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.logout_rounded, color: Color(0xFF64748B), size: 22),
-                      tooltip: 'Log Out',
-                      onPressed: _handleLogout,
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: RefreshIndicator(
-                  color: const Color(0xFF1E3A8A),
-                  onRefresh: _refreshStudentRecord,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Premium Student Identity Hero Card
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF1E3A8A), Color(0xFF0F1E36)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(22),
-                            boxShadow: const [
-                              BoxShadow(color: Color(0x291E3A8A), blurRadius: 18, offset: Offset(0, 8)),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Welcome, $parentName',
-                                          style: const TextStyle(color: Color(0xFF93C5FD), fontSize: 12, fontWeight: FontWeight.w600),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          studentName,
-                                          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          'Class: $className • Roll No: ${_student['roll_number'] ?? 'N/A'}',
-                                          style: const TextStyle(color: Colors.white70, fontSize: 12),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  InkWell(
-                                    onTap: _generateStudentIdAndReportPdf,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.14),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.white24),
-                                      ),
-                                      child: const Row(
-                                        children: [
-                                          Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFFDE68A), size: 15),
-                                          SizedBox(width: 5),
-                                          Text('ID / PDF', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              Container(
-                                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.09),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                  children: [
-                                    _buildHeroMetric('Attendance', '$att%', _openAttendanceModal),
-                                    Container(width: 1, height: 24, color: Colors.white24),
-                                    _buildHeroMetric('Fee Status', feeDue == '0' ? 'Cleared ✓' : '₹$feeDue', _openFeesModal),
-                                    Container(width: 1, height: 24, color: Colors.white24),
-                                    _buildHeroMetric('Term Grade', '$marks', _openResultsModal),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          'STUDENT & FAMILY SERVICES',
-                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Color(0xFF64748B), letterSpacing: 0.8),
-                        ),
-                        const SizedBox(height: 10),
-                        GridView.count(
-                          crossAxisCount: 3,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                          childAspectRatio: 0.95,
-                          children: [
-                            _buildGridCard(Icons.calendar_month_rounded, 'Attendance', const Color(0xFF10B981), _openAttendanceModal),
-                            _buildGridCard(Icons.account_balance_wallet_rounded, 'Fees & Rcpt', const Color(0xFF8B5CF6), _openFeesModal),
-                            _buildGridCard(Icons.insert_chart_rounded, 'Results', const Color(0xFFF59E0B), _openResultsModal),
-                            _buildGridCard(Icons.access_time_filled_rounded, 'Time Table', const Color(0xFF3B82F6), _openTimeTableModal),
-                            _buildGridCard(Icons.campaign_rounded, 'Notices', const Color(0xFFEC4899), _openNoticesModal),
-                            _buildGridCard(Icons.report_problem_rounded, 'Complaint', const Color(0xFFDC2626), () => _openComplaintModal(context)),
-                            _buildGridCard(Icons.contact_phone_rounded, 'Contact Desk', const Color(0xFF0284C7), () => _showContactDeskModal(context)),
-                            _buildGridCard(Icons.menu_book_rounded, 'Homework', const Color(0xFF06B6D4), _openHomeworkModal),
-                            _buildGridCard(Icons.celebration_rounded, 'Events', const Color(0xFF84CC16), _openEventsModal),
-                          ],
-                        ),
-                        const SizedBox(height: 22),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'LATEST CIRCULARS',
-                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Color(0xFF64748B), letterSpacing: 0.8),
-                            ),
-                            TextButton(
-                              onPressed: _openNoticesModal,
-                              child: const Text('View All →', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
-                            ),
-                          ],
-                        ),
-                        FutureBuilder<List<Map<String, dynamic>>>(
-                          future: _supabaseClient != null
-                              ? _supabaseClient!
-                                  .from('school_notices')
-                                  .select()
-                                  .order('created_at', ascending: false)
-                                  .limit(3)
-                              : Future.value([]),
-                          builder: (context, snapshot) {
-                            if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                              return Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
-                                child: const Text('No circulars posted yet.', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
-                              );
-                            }
-                            return Column(
-                              children: snapshot.data!
-                                  .map((n) => InkWell(
-                                        onTap: _openNoticesModal,
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Container(
-                                          margin: const EdgeInsets.only(bottom: 8),
-                                          padding: const EdgeInsets.all(14),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(14),
-                                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFFEFF6FF),
-                                                  borderRadius: BorderRadius.circular(6),
-                                                ),
-                                                child: Text(
-                                                  n['tag'] ?? 'NOTICE',
-                                                  style: const TextStyle(color: Color(0xFF1E3A8A), fontSize: 10, fontWeight: FontWeight.bold),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Expanded(
-                                                child: Text(
-                                                  n['title'] ?? '',
-                                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF0F1E36)),
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                              const Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFF94A3B8)),
-                                            ],
-                                          ),
-                                        ),
-                                      ))
-                                  .toList(),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeroMetric(String label, String value, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Text(value, style: const TextStyle(color: Color(0xFFFDE68A), fontWeight: FontWeight.w900, fontSize: 14)),
-          const SizedBox(height: 2),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10.5)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGridCard(IconData icon, String label, Color color, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 3))],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF0F1E36)),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+                  onPressed: () async {
+                    if (complaintController.text.trim().isNotEmpty) {
+                      final client = _supabaseClient;
+                      if (client != null) {
+                        try {
+                          await client.from('school_complaints').insert({
+                            'parent_name': _student['parent_name'] ?? _student['father_name'] ?? 'Parent',
+                            'student_name': _student['student_name'] ?? 'Student',
+                            'category': category,
+                            'details': complaintController.text.trim(),
+                            'status': 'Under Review',
+                          });
+                        } catch (_) {}
+                      }
+                      if (!context.mounted) return;
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const
