@@ -18,6 +18,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _birthYearController = TextEditingController();
   final _adminIdController = TextEditingController();
   final _adminPassController = TextEditingController();
+  
+  bool _rememberMe = true; // Visual Remember Me State
   bool _isLoading = false;
 
   SupabaseClient? get _supabaseClient {
@@ -26,6 +28,30 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (_) {
       return null;
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  // Auto-fill inputs if previously remembered
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedPhone = prefs.getString('saved_phone');
+      final savedDob = prefs.getString('saved_dob');
+      final savedAdminEmail = prefs.getString('saved_admin_email');
+
+      if (mounted) {
+        setState(() {
+          if (savedPhone != null) _mobileController.text = savedPhone;
+          if (savedDob != null) _birthYearController.text = savedDob;
+          if (savedAdminEmail != null) _adminIdController.text = savedAdminEmail;
+        });
+      }
+    } catch (_) {}
   }
 
   // PARENT LOGIN
@@ -47,9 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final client = _supabaseClient;
-      if (client == null) {
-        throw Exception('Database connection not ready.');
-      }
+      if (client == null) throw Exception('Database connection not ready.');
 
       final res = await client
           .from('students')
@@ -64,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('No student found matching these details. Please contact school office.'),
+            content: Text('No student record found matching credentials.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -72,23 +96,26 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('saved_user_type', 'parent');
-      await prefs.setString('saved_student_data', jsonEncode(res));
+      if (_rememberMe) {
+        await prefs.setString('saved_user_type', 'parent');
+        await prefs.setString('saved_student_data', jsonEncode(res));
+        await prefs.setString('saved_phone', mobile);
+        await prefs.setString('saved_dob', year);
+      } else {
+        await prefs.remove('saved_user_type');
+        await prefs.remove('saved_student_data');
+      }
 
       if (!mounted) return;
-      Navigator.pushAndRemoveUntil(
+      Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => DashboardScreen(studentData: res)),
-        (route) => false,
       );
     } catch (e) {
       setState(() => _isLoading = false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Verification failed: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Verification failed: $e'), backgroundColor: Colors.red),
       );
     }
   }
@@ -112,9 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final client = _supabaseClient;
-      if (client == null) {
-        throw Exception('Database connection not ready.');
-      }
+      if (client == null) throw Exception('Database connection not ready.');
 
       final authResponse = await client.auth.signInWithPassword(
         email: email,
@@ -122,9 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       final user = authResponse.user;
-      if (user == null) {
-        throw const AuthException('Invalid admin credentials.');
-      }
+      if (user == null) throw const AuthException('Invalid admin credentials.');
 
       final profile = await client
           .from('profiles')
@@ -139,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Access Denied: This account is not authorized as Admin.'),
+            content: Text('Access Denied: Account not authorized as Admin.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -147,13 +170,17 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('saved_user_type', 'admin');
+      if (_rememberMe) {
+        await prefs.setString('saved_user_type', 'admin');
+        await prefs.setString('saved_admin_email', email);
+      } else {
+        await prefs.remove('saved_user_type');
+      }
 
       if (!mounted) return;
-      Navigator.pushAndRemoveUntil(
+      Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const AdminHubScreen()),
-        (route) => false,
       );
     } on AuthException catch (e) {
       setState(() => _isLoading = false);
@@ -165,9 +192,50 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Admin login failed: ${e.toString()}'), backgroundColor: Colors.red),
+        SnackBar(content: Text('Admin login error: $e'), backgroundColor: Colors.red),
       );
     }
+  }
+
+  Widget _buildRememberMeToggle() {
+    return Container(
+      margin: const EdgeInsets.only(top: 14, bottom: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(
+                _rememberMe ? Icons.verified_user_rounded : Icons.shield_outlined,
+                size: 18,
+                color: _rememberMe ? const Color(0xFF10B981) : const Color(0xFF64748B),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Remember my login details',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF334155),
+                ),
+              ),
+            ],
+          ),
+          Switch(
+            value: _rememberMe,
+            activeColor: const Color(0xFF1E3A8A),
+            activeTrackColor: const Color(0xFF93C5FD),
+            onChanged: (val) => setState(() => _rememberMe = val),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildParentLoginForm() {
@@ -221,7 +289,7 @@ class _LoginScreenState extends State<LoginScreen> {
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
           ),
         ),
-        const SizedBox(height: 28),
+        _buildRememberMeToggle(),
         SizedBox(
           width: double.infinity,
           height: 52,
@@ -234,11 +302,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             onPressed: _isLoading ? null : _handleParentLogin,
             child: _isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                  )
+                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                 : const Text('Access Student Dashboard', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
           ),
         ),
@@ -287,7 +351,7 @@ class _LoginScreenState extends State<LoginScreen> {
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
           ),
         ),
-        const SizedBox(height: 28),
+        _buildRememberMeToggle(),
         SizedBox(
           width: double.infinity,
           height: 52,
@@ -300,11 +364,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             onPressed: _isLoading ? null : _handleAdminLogin,
             child: _isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                  )
+                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                 : const Text('Login to Admin Panel', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
           ),
         ),
@@ -414,7 +474,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
               if (_selectedTab == 0) _buildParentLoginForm() else _buildAdminLoginForm(),
             ],
           ),
