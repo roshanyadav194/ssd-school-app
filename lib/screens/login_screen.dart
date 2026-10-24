@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dashboard_screen.dart';
 import 'admin_hub_screen.dart';
@@ -26,7 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // PARENT LOGIN: Verified directly against students table created by Admin
+  // PARENT LOGIN: Authenticates, saves session locally, and clears backstack
   Future<void> _handleParentLogin() async {
     final mobile = _mobileController.text.trim();
     final year = _birthYearController.text.trim();
@@ -69,11 +71,17 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // Match verified -> open student dashboard
+      // SAVE SESSION LOCALLY (Remember Login)
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('saved_user_type', 'parent');
+      await prefs.setString('saved_student_data', jsonEncode(res));
+
       if (!mounted) return;
-      Navigator.pushReplacement(
+      // Clears login from backstack so Back button exits rather than returning to login
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => DashboardScreen(studentData: res)),
+        (route) => false,
       );
     } catch (e) {
       setState(() => _isLoading = false);
@@ -87,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // ADMIN LOGIN: Verified via Supabase Auth & Role Check
+  // ADMIN LOGIN: Authenticates via Supabase, saves session, clears backstack
   Future<void> _handleAdminLogin() async {
     final email = _adminIdController.text.trim();
     final password = _adminPassController.text.trim();
@@ -140,28 +148,27 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
+      // SAVE SESSION LOCALLY (Remember Login)
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('saved_user_type', 'admin');
+
       if (!mounted) return;
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const AdminHubScreen()),
+        (route) => false,
       );
     } on AuthException catch (e) {
       setState(() => _isLoading = false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(e.message), backgroundColor: Colors.red),
       );
     } catch (e) {
       setState(() => _isLoading = false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Admin login failed: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Admin login failed: ${e.toString()}'), backgroundColor: Colors.red),
       );
     }
   }
@@ -228,7 +235,7 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'No password required. Login using your registered mobile number and student birth year.',
+                  'Your session stays active automatically. You won\'t need to enter these details every time.',
                   style: TextStyle(color: Color(0xFF1E3A8A), fontSize: 11.5, height: 1.3),
                 ),
               ),
