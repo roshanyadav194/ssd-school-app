@@ -17,8 +17,12 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
   late AnimationController _animController;
+  late AnimationController _entranceController;
+  late Animation<double> _fadeIn;
+  late Animation<Offset> _slideUp;
+  bool _isCheckingSession = true;
 
   @override
   void initState() {
@@ -27,12 +31,25 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       vsync: this,
       duration: const Duration(seconds: 8),
     )..repeat();
+
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 950),
+    );
+
+    _fadeIn = CurvedAnimation(parent: _entranceController, curve: Curves.easeOutCubic);
+    _slideUp = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(
+      CurvedAnimation(parent: _entranceController, curve: Curves.easeOutCubic),
+    );
+
+    _entranceController.forward();
     _initApp();
   }
 
   @override
   void dispose() {
     _animController.dispose();
+    _entranceController.dispose();
     super.dispose();
   }
 
@@ -78,6 +95,26 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     } catch (e) {
       debugPrint('Auto-login check notice: $e');
     }
+
+    if (mounted) {
+      setState(() => _isCheckingSession = false);
+    }
+  }
+
+  void _navigateToDiscovery() {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 450),
+        pageBuilder: (_, animation, __) => const SchoolDiscoveryScreen(),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+            child: child,
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -97,124 +134,247 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             ),
           ),
           SafeArea(
-            child: Column(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1E3A8A),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: const [
-                              BoxShadow(color: Color(0x331E3A8A), blurRadius: 15, offset: Offset(0, 6))
-                            ],
-                          ),
-                          child: const Icon(Icons.school_rounded, color: Colors.white, size: 44),
-                        ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          'S.S.D. CONVENT SCHOOL',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF0F1E36),
-                            letterSpacing: 1.1,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Knowledge • Discipline • Future',
-                          style: TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w500),
-                        ),
-                        const SizedBox(height: 30),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF1E3A8A), Color(0xFF0F1E36)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
+            child: FadeTransition(
+              opacity: _fadeIn,
+              child: SlideTransition(
+                position: _slideUp,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(height: 16),
+                            // Status Pill
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1E3A8A).withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(30),
+                                border: Border.all(color: const Color(0xFF1E3A8A).withOpacity(0.18)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF10B981),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'SMART DIGITAL CAMPUS • PRAYAGRAJ',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF1E3A8A),
+                                      letterSpacing: 0.9,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: const [
-                              BoxShadow(color: Color(0x29000000), blurRadius: 16, offset: Offset(0, 8))
-                            ],
-                          ),
-                          child: const Column(
-                            children: [
-                              Icon(Icons.apartment_rounded, color: Colors.white, size: 54),
-                              SizedBox(height: 12),
-                              Text(
-                                'S.S.D. CONVENT CAMPUS',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                            const SizedBox(height: 24),
+                            // Institutional Crest Emblem
+                            Container(
+                              width: 88,
+                              height: 88,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF1E40AF), Color(0xFF0F1E36)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x3D1E3A8A),
+                                    blurRadius: 24,
+                                    offset: Offset(0, 10),
+                                  )
+                                ],
+                                border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.45), width: 1.5),
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Family Information Portal',
-                                style: TextStyle(color: Color(0xFF93C5FD), fontSize: 12),
+                              child: const Icon(Icons.school_rounded, color: Colors.white, size: 46),
+                            ),
+                            const SizedBox(height: 22),
+                            const Text(
+                              'S.S.D. CONVENT SCHOOL',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 23,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF0F1E36),
+                                letterSpacing: 1.0,
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Knowledge • Discipline • Future',
+                              style: TextStyle(
+                                color: Color(0xFF64748B),
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                            const SizedBox(height: 28),
+                            // Premium Showcase Card
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF1E3A8A), Color(0xFF0F1E36)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(26),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x290F1E36),
+                                    blurRadius: 22,
+                                    offset: Offset(0, 12),
+                                  )
+                                ],
+                              ),
+                              child: Column(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.apartment_rounded, color: Color(0xFFFBBF24), size: 42),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  const Text(
+                                    'S.S.D. CONVENT CAMPUS',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16,
+                                      letterSpacing: 0.6,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'Champapur, Handia Road, Janghai, Prayagraj',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: Color(0xFF93C5FD), fontSize: 12),
+                                  ),
+                                  const SizedBox(height: 18),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.07),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: Colors.white.withOpacity(0.12)),
+                                    ),
+                                    child: const Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                      children: [
+                                        _SplashHighlightItem(icon: Icons.verified_rounded, label: 'Attendance'),
+                                        _SplashHighlightItem(icon: Icons.receipt_long_rounded, label: 'Fee Ledger'),
+                                        _SplashHighlightItem(icon: Icons.workspace_premium_rounded, label: 'Report Cards'),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF0F1E36),
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-                  ),
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFF0F1E36),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            elevation: 0,
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const SchoolDiscoveryScreen()),
-                            );
-                          },
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text('Explore School & Portal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                              SizedBox(width: 8),
-                              Icon(Icons.arrow_forward_rounded, size: 18),
-                            ],
-                          ),
-                        ),
+                    // Bottom Action Dock
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF0F1E36),
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                        boxShadow: [
+                          BoxShadow(color: Color(0x26000000), blurRadius: 20, offset: Offset(0, -4)),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        '© S.S.D. Convent School • Secure Access',
-                        style: TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            height: 54,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: const Color(0xFF0F1E36),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                elevation: 0,
+                              ),
+                              onPressed: _navigateToDiscovery,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (_isCheckingSession) ...[
+                                    const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(strokeWidth: 2.2, color: Color(0xFF1E3A8A)),
+                                    ),
+                                    const SizedBox(width: 12),
+                                  ],
+                                  const Text(
+                                    'Explore School & Portal',
+                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.arrow_forward_rounded, size: 19),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            '© S.S.D. Convent School • Cloud Verified Portal',
+                            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.w500),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SplashHighlightItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _SplashHighlightItem({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: const Color(0xFFFBBF24), size: 15),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+        ),
+      ],
     );
   }
 }
