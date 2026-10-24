@@ -154,7 +154,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const LoginScreen()),
+                              MaterialPageRoute(builder: (_) => LoginScreen()),
                             );
                           },
                           child: const Row(
