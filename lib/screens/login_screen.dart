@@ -28,7 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // PARENT LOGIN: Authenticates, saves session locally, and clears backstack
+  // PARENT LOGIN
   Future<void> _handleParentLogin() async {
     final mobile = _mobileController.text.trim();
     final year = _birthYearController.text.trim();
@@ -71,13 +71,11 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // SAVE SESSION LOCALLY (Remember Login)
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('saved_user_type', 'parent');
       await prefs.setString('saved_student_data', jsonEncode(res));
 
       if (!mounted) return;
-      // Clears login from backstack so Back button exits rather than returning to login
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => DashboardScreen(studentData: res)),
@@ -95,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // ADMIN LOGIN: Authenticates via Supabase, saves session, clears backstack
+  // ADMIN LOGIN
   Future<void> _handleAdminLogin() async {
     final email = _adminIdController.text.trim();
     final password = _adminPassController.text.trim();
@@ -148,7 +146,6 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // SAVE SESSION LOCALLY (Remember Login)
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('saved_user_type', 'admin');
 
@@ -198,6 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             hintText: 'Enter 10-digit number',
+            hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.normal),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
@@ -215,31 +213,12 @@ class _LoginScreenState extends State<LoginScreen> {
           keyboardType: TextInputType.text,
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.cake_rounded, color: Color(0xFF1E3A8A), size: 20),
-            hintText: 'e.g. 2010',
+            hintText: 'e.g. 2012',
+            hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.normal),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEFF6FF),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.info_outline_rounded, color: Color(0xFF1E3A8A), size: 18),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Your session stays active automatically. You won\'t need to enter these details every time.',
-                  style: TextStyle(color: Color(0xFF1E3A8A), fontSize: 11.5, height: 1.3),
-                ),
-              ),
-            ],
           ),
         ),
         const SizedBox(height: 28),
@@ -280,8 +259,9 @@ class _LoginScreenState extends State<LoginScreen> {
           controller: _adminIdController,
           keyboardType: TextInputType.emailAddress,
           decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF1E3A8A), size: 20),
+            prefixIcon: const Icon(Icons.alternate_email_rounded, color: Color(0xFF1E3A8A), size: 20),
             hintText: 'admin@ssdconvent.com',
+            hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.normal),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
@@ -300,6 +280,7 @@ class _LoginScreenState extends State<LoginScreen> {
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.lock_rounded, color: Color(0xFF1E3A8A), size: 20),
             hintText: 'Enter password',
+            hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.normal),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
@@ -415,7 +396,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
-                            color: _selectedTab == 1 ? const Color(0xFF1E3A8A) : Colors.transparent,
+                            color: _selectedTab == 1 ? const Color(0xFF0F1E36) : Colors.transparent,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
