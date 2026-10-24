@@ -245,10 +245,10 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   int _selectedTab = 0; // 0 = Parent, 1 = Admin Panel
-  final _mobileController = TextEditingController(text: '9876543210');
-  final _birthYearController = TextEditingController(text: '2015');
-  final _adminIdController = TextEditingController(text: 'admin@ssd');
-  final _adminPassController = TextEditingController(text: 'ssd2026');
+  final _mobileController = TextEditingController();
+  final _birthYearController = TextEditingController();
+  final _adminIdController = TextEditingController();
+  final _adminPassController = TextEditingController();
   bool _isLoading = false;
 
   Future<void> _handleParentLogin() async {
@@ -257,7 +257,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (mobile.isEmpty || year.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter both mobile number and birth year')),
+        const SnackBar(
+          content: Text('Please enter both mobile number and birth year'),
+          backgroundColor: Colors.orange,
+        ),
       );
       return;
     }
@@ -266,54 +269,121 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final client = supabaseClient;
-      if (client != null && supabaseUrl.startsWith('http')) {
-        final res = await client
-            .from('students')
-            .select()
-            .or('mobile_number.eq.$mobile,parent_phone.eq.$mobile')
-            .filter('birth_year', 'eq', year)
-            .maybeSingle()
-            .timeout(const Duration(seconds: 5));
-
-        setState(() => _isLoading = false);
-
-        if (res != null) {
-          if (!mounted) return;
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => DashboardScreen(studentData: res)),
-          );
-          return;
-        }
+      if (client == null) {
+        throw Exception('Database connection not ready. Check internet.');
       }
+
+      final res = await client
+          .from('students')
+          .select()
+          .or('mobile_number.eq.$mobile,parent_phone.eq.$mobile')
+          .filter('birth_year', 'eq', year)
+          .maybeSingle();
+
+      setState(() => _isLoading = false);
+
+      if (res == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No student found matching these details. Please verify your details.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => DashboardScreen(studentData: res)),
+      );
     } catch (e) {
-      debugPrint('Supabase direct query failed, fallback to demo: $e');
-    }
-
-    setState(() => _isLoading = false);
-
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => DashboardScreen(
-          studentData: {
-            'parent_name': 'Rahul Yadav',
-            'student_name': 'Vinayak Yadav',
-            'class_name': '5',
-            'section': 'B',
-            'scholar_id': 'SSD-9821',
-          },
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Verification failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
         ),
-      ),
-    );
+      );
+    }
   }
 
-  void _handleAdminLogin() {
-    if (_adminIdController.text.trim().isNotEmpty) {
-      Navigator.push(
+  Future<void> _handleAdminLogin() async {
+    final email = _adminIdController.text.trim();
+    final password = _adminPassController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter Admin Email and Password'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final client = supabaseClient;
+      if (client == null) {
+        throw Exception('Database connection not ready.');
+      }
+
+      final authResponse = await client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+
+      final user = authResponse.user;
+      if (user == null) {
+        throw const AuthException('Invalid admin credentials.');
+      }
+
+      final profile = await client
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      setState(() => _isLoading = false);
+
+      if (profile == null || profile['role'] != 'admin') {
+        await client.auth.signOut();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Access Denied: This account is not authorized as Admin.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const AdminHubScreen()),
+      );
+    } on AuthException catch (e) {
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Admin login failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -339,6 +409,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
             ),
+            hintText: 'Enter 10-digit number',
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
@@ -353,7 +424,7 @@ class _LoginScreenState extends State<LoginScreen> {
           keyboardType: TextInputType.number,
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.cake_rounded, color: Color(0xFF1E3A8A), size: 20),
-            hintText: 'e.g. 2015',
+            hintText: 'e.g. 2010',
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
@@ -393,7 +464,11 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             onPressed: _isLoading ? null : _handleParentLogin,
             child: _isLoading
-                ? const CircularProgressIndicator(color: Colors.white)
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
                 : const Text('Access Student Dashboard', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
           ),
         ),
@@ -405,12 +480,14 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Staff / Admin ID', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F1E36))),
+        const Text('Staff / Admin Email', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F1E36))),
         const SizedBox(height: 8),
         TextField(
           controller: _adminIdController,
+          keyboardType: TextInputType.emailAddress,
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF1E3A8A), size: 20),
+            hintText: 'admin@ssdconvent.com',
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
@@ -425,7 +502,7 @@ class _LoginScreenState extends State<LoginScreen> {
           obscureText: true,
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.lock_rounded, color: Color(0xFF1E3A8A), size: 20),
-            hintText: 'Enter admin passcode',
+            hintText: 'Enter password',
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
@@ -443,12 +520,27 @@ class _LoginScreenState extends State<LoginScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               elevation: 0,
             ),
-            onPressed: _handleAdminLogin,
-            child: const Text('Login to Admin Panel', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            onPressed: _isLoading ? null : _handleAdminLogin,
+            child: _isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : const Text('Login to Admin Panel', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
           ),
         ),
       ],
     );
+  }
+
+  @override
+  void dispose() {
+    _mobileController.dispose();
+    _birthYearController.dispose();
+    _adminIdController.dispose();
+    _adminPassController.dispose();
+    super.dispose();
   }
 
   @override
@@ -630,7 +722,7 @@ class DashboardScreen extends StatelessWidget {
                       if (client != null) {
                         try {
                           await client.from('school_complaints').insert({
-                            'parent_name': studentData['parent_name'] ?? 'Parent',
+                            'parent_name': studentData['parent_name'] ?? studentData['father_name'] ?? 'Parent',
                             'student_name': studentData['student_name'] ?? 'Student',
                             'category': category,
                             'details': complaintController.text.trim(),
@@ -657,6 +749,10 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final parentName = studentData['parent_name'] ?? studentData['father_name'] ?? 'Parent';
+    final studentName = studentData['student_name'] ?? 'Student';
+    final className = studentData['class_grade'] ?? studentData['class_name'] ?? '';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
@@ -702,11 +798,11 @@ class DashboardScreen extends StatelessWidget {
                       children: [
                         const Text('Good Morning,', style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
                         Text(
-                          studentData['parent_name'] ?? 'Parent',
+                          parentName,
                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F1E36)),
                         ),
                         Text(
-                          'Parent of ${studentData['student_name'] ?? 'Student'} (Class ${studentData['class_name'] ?? '5'}-${studentData['section'] ?? 'B'})',
+                          'Parent of $studentName (Class $className)',
                           style: const TextStyle(color: Color(0xFF1E3A8A), fontSize: 12, fontWeight: FontWeight.w500),
                         ),
                       ],
@@ -891,6 +987,13 @@ class _AdminHubScreenState extends State<AdminHubScreen> {
     } finally {
       setState(() => _isPosting = false);
     }
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _contentCtrl.dispose();
+    super.dispose();
   }
 
   @override
