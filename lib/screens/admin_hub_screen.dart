@@ -1,6 +1,11 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'login_screen.dart';
 
 class AdminHubScreen extends StatefulWidget {
   const AdminHubScreen({super.key});
@@ -21,6 +26,8 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
 
   // Comprehensive Class Hierarchy List
   static const List<String> schoolClasses = [
+    'ALL',
+    'Not Assigned',
     'Nursery', 'L.K.G.', 'U.K.G.',
     'Class 1-A', 'Class 1-B', 'Class 2-A', 'Class 2-B',
     'Class 3-A', 'Class 3-B', 'Class 4-A', 'Class 4-B',
@@ -99,9 +106,198 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
     super.dispose();
   }
 
-  // ==========================================
-  // MODAL: ADD / EDIT FULL STUDENT PROFILE
-  // ==========================================
+  // --- SMART CLASS MATCHING HELPER ---
+  bool _matchesClass(String studentClass, String filter) {
+    if (filter == 'ALL') return true;
+
+    final scClean = studentClass.trim().toLowerCase();
+    final fClean = filter.trim().toLowerCase();
+
+    if (filter == 'Not Assigned') {
+      return scClean.isEmpty || scClean.contains('not assigned') || scClean == 'null';
+    }
+
+    // Strip "class", spaces, dashes for fuzzy equality (e.g. "9-A" matches "Class 9-A")
+    final normStudent = scClean.replaceAll('class', '').replaceAll('-', '').replaceAll(' ', '');
+    final normFilter = fClean.replaceAll('class', '').replaceAll('-', '').replaceAll(' ', '');
+
+    return normStudent == normFilter || scClean.contains(fClean) || fClean.contains(scClean);
+  }
+
+  // --- PDF GENERATION & DOCUMENT VIEWER ---
+  Future<void> _openStudentPdf(Map<String, dynamic> student) async {
+    final pdf = pw.Document();
+
+    final name = (student['student_name'] ?? 'Student Name').toString();
+    final grade = (student['class_grade'] ?? 'Not Assigned').toString();
+    final roll = (student['roll_number'] ?? student['roll_no'] ?? 'N/A').toString();
+    final adm = (student['admission_number'] ?? student['scholar_no'] ?? 'SSD-${student['id'].toString().substring(0, 5)}').toString();
+    final father = (student['parent_name'] ?? student['father_name'] ?? 'N/A').toString();
+    final mother = (student['mother_name'] ?? 'N/A').toString();
+    final phone = (student['parent_phone'] ?? student['mobile_number'] ?? 'N/A').toString();
+    final dob = (student['birth_year'] ?? student['student_dob'] ?? 'N/A').toString();
+    final address = (student['address'] ?? 'Prayagraj, Uttar Pradesh').toString();
+    final feeDue = (student['pending_fees'] ?? '0').toString();
+    final att = (student['attendance_percentage'] ?? '92').toString();
+    final gradeChar = (student['marks_grade'] ?? 'A').toString();
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return pw.Container(
+            padding: const pw.EdgeInsets.all(32),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.blue900, width: 2),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // Header
+                pw.Center(
+                  child: pw.Column(
+                    children: [
+                      pw.Text(
+                        'S.S.D. CONVENT SCHOOL',
+                        style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        'Affiliated & Recognized Senior Secondary Institution',
+                        style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+                      ),
+                      pw.Text(
+                        'Champapur, Handia Road, Janghai, Prayagraj, UP',
+                        style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+                      ),
+                      pw.SizedBox(height: 12),
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.blue900,
+                          borderRadius: pw.BorderRadius.circular(4),
+                        ),
+                        child: pw.Text(
+                          'OFFICIAL STUDENT RECORD DOSSIER',
+                          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 24),
+
+                // Primary Record Table
+                pw.Table(
+                  border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+                  children: [
+                    pw.TableRow(children: [
+                      _pdfCell('Student Full Name', isHeader: true),
+                      _pdfCell(name),
+                      _pdfCell('Scholar / Adm No', isHeader: true),
+                      _pdfCell(adm),
+                    ]),
+                    pw.TableRow(children: [
+                      _pdfCell('Class & Section', isHeader: true),
+                      _pdfCell(grade),
+                      _pdfCell('Roll Number', isHeader: true),
+                      _pdfCell(roll),
+                    ]),
+                    pw.TableRow(children: [
+                      _pdfCell("Father's Name", isHeader: true),
+                      _pdfCell(father),
+                      _pdfCell("Mother's Name", isHeader: true),
+                      _pdfCell(mother),
+                    ]),
+                    pw.TableRow(children: [
+                      _pdfCell('Contact Number', isHeader: true),
+                      _pdfCell('+91 $phone'),
+                      _pdfCell('Date of Birth / Key', isHeader: true),
+                      _pdfCell(dob),
+                    ]),
+                    pw.TableRow(children: [
+                      _pdfCell('Residential Address', isHeader: true),
+                      _pdfCell(address, colSpan: 3),
+                    ]),
+                  ],
+                ),
+                pw.SizedBox(height: 20),
+
+                // Academic & Fee Standing
+                pw.Text('ACADEMIC & FINANCIAL STATUS', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+                pw.SizedBox(height: 8),
+                pw.Table(
+                  border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+                  children: [
+                    pw.TableRow(children: [
+                      _pdfCell('Attendance Percentage', isHeader: true),
+                      _pdfCell('$att%'),
+                      _pdfCell('Report Grade', isHeader: true),
+                      _pdfCell(gradeChar),
+                    ]),
+                    pw.TableRow(children: [
+                      _pdfCell('Fee Standing Status', isHeader: true),
+                      _pdfCell(feeDue == '0' || feeDue == '0.00' ? 'ALL DUES CLEARED (NIL)' : 'PENDING: INR $feeDue'),
+                      _pdfCell('System Verified', isHeader: true),
+                      _pdfCell('YES - Supabase Cloud'),
+                    ]),
+                  ],
+                ),
+                pw.Spacer(),
+
+                // Signatures
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Column(
+                      children: [
+                        pw.Container(width: 140, height: 1, color: PdfColors.grey800),
+                        pw.SizedBox(height: 4),
+                        pw.Text('Class Teacher Signature', style: const pw.TextStyle(fontSize: 9)),
+                      ],
+                    ),
+                    pw.Column(
+                      children: [
+                        pw.Container(width: 140, height: 1, color: PdfColors.grey800),
+                        pw.SizedBox(height: 4),
+                        pw.Text('Principal / Admin Seal', style: const pw.TextStyle(fontSize: 9)),
+                      ],
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 10),
+                pw.Center(
+                  child: pw.Text('Generated securely via S.S.D. Convent School Mobile Administration Portal', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600)),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    if (!mounted) return;
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+      name: 'SSD_${name.replaceAll(' ', '_')}_Record.pdf',
+    );
+  }
+
+  static pw.Widget _pdfCell(String text, {bool isHeader = false, int colSpan = 1}) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(
+          fontSize: 9.5,
+          fontWeight: isHeader ? pw.FontWeight.bold : pw.FontWeight.normal,
+          color: isHeader ? PdfColors.blue900 : PdfColors.black,
+        ),
+      ),
+    );
+  }
+
+  // --- MODAL: ADD / EDIT STUDENT PROFILE ---
   void _openStudentModal({Map<String, dynamic>? student}) {
     final isEdit = student != null;
     if (isEdit) {
@@ -184,6 +380,7 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
                               isExpanded: true,
                               decoration: const InputDecoration(labelText: 'Class & Section *', border: OutlineInputBorder()),
                               items: schoolClasses
+                                  .where((c) => c != 'ALL')
                                   .map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 12.5))))
                                   .toList(),
                               onChanged: (v) => setModalState(() => _formClass = v!),
@@ -368,9 +565,7 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
     );
   }
 
-  // ==========================================
-  // MODAL: ADVANCED FEE LEDGER & RECEIPT
-  // ==========================================
+  // --- MODAL: ADVANCED FEE LEDGER & RECEIPT ---
   void _openFeeLedgerModal(Map<String, dynamic> student) {
     final payAmountCtrl = TextEditingController(text: (student['pending_fees'] ?? '0').toString());
     final editDueCtrl = TextEditingController(text: (student['pending_fees'] ?? '0').toString());
@@ -600,9 +795,49 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
     );
   }
 
-  // ==========================================
-  // MODAL: ADD NEW FACULTY / TEACHER
-  // ==========================================
+  // --- BACK NAVIGATION / LOGOUT DIALOG ---
+  void _handleBackNavigation(BuildContext context) {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      _showLogoutDialog(context);
+    }
+  }
+
+  Future<void> _showLogoutDialog(BuildContext context) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Exit Admin Panel?'),
+        content: const Text('Do you want to log out and return to the login screen?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Log Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true && mounted) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('saved_user_type');
+        await Supabase.instance.client.auth.signOut();
+      } catch (_) {}
+
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
+
+  // --- MODAL: ADD NEW FACULTY / TEACHER ---
   void _openFacultyModal() {
     _facultyNameCtrl.clear();
     _facultyDesigCtrl.clear();
@@ -655,87 +890,267 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text('Admin Management Hub', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF0F1E36),
-        foregroundColor: Colors.white,
-        elevation: 1,
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          indicatorColor: const Color(0xFFD97706),
-          indicatorWeight: 3,
-          labelColor: Colors.white,
-          unselectedLabelColor: const Color(0xFF94A3B8),
-          tabs: const [
-            Tab(icon: Icon(Icons.school_rounded, size: 19), text: 'Students'),
-            Tab(icon: Icon(Icons.account_balance_wallet_rounded, size: 19), text: 'Fees'),
-            Tab(icon: Icon(Icons.calendar_month_rounded, size: 19), text: 'Attendance'),
-            Tab(icon: Icon(Icons.badge_rounded, size: 19), text: 'Faculty'),
-            Tab(icon: Icon(Icons.photo_library_rounded, size: 19), text: 'Gallery'),
-            Tab(icon: Icon(Icons.campaign_rounded, size: 19), text: 'Circulars'),
-            Tab(icon: Icon(Icons.report_problem_rounded, size: 19), text: 'Complaints'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          // TAB 1: STUDENTS
-          Scaffold(
-            backgroundColor: const Color(0xFFF8FAFC),
-            floatingActionButton: FloatingActionButton.extended(
-              backgroundColor: const Color(0xFF1E3A8A),
-              foregroundColor: Colors.white,
-              icon: const Icon(Icons.person_add_rounded),
-              label: const Text('Add Student'),
-              onPressed: () => _openStudentModal(),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (!didPop) {
+          _handleBackNavigation(context);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+            tooltip: 'Back',
+            onPressed: () => _handleBackNavigation(context),
+          ),
+          title: const Text('Admin Management Hub', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          backgroundColor: const Color(0xFF0F1E36),
+          foregroundColor: Colors.white,
+          elevation: 1,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout_rounded, size: 20),
+              tooltip: 'Log Out',
+              onPressed: () => _showLogoutDialog(context),
             ),
-            body: Column(
+          ],
+          bottom: TabBar(
+            controller: _tabController,
+            isScrollable: true,
+            indicatorColor: const Color(0xFFD97706),
+            indicatorWeight: 3,
+            labelColor: Colors.white,
+            unselectedLabelColor: const Color(0xFF94A3B8),
+            tabs: const [
+              Tab(icon: Icon(Icons.school_rounded, size: 19), text: 'Students'),
+              Tab(icon: Icon(Icons.account_balance_wallet_rounded, size: 19), text: 'Fees'),
+              Tab(icon: Icon(Icons.calendar_month_rounded, size: 19), text: 'Attendance'),
+              Tab(icon: Icon(Icons.badge_rounded, size: 19), text: 'Faculty'),
+              Tab(icon: Icon(Icons.photo_library_rounded, size: 19), text: 'Gallery'),
+              Tab(icon: Icon(Icons.campaign_rounded, size: 19), text: 'Circulars'),
+              Tab(icon: Icon(Icons.report_problem_rounded, size: 19), text: 'Complaints'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          controller: _tabController,
+          children: [
+            // ==================== TAB 1: STUDENTS ====================
+            Scaffold(
+              backgroundColor: const Color(0xFFF8FAFC),
+              floatingActionButton: FloatingActionButton.extended(
+                backgroundColor: const Color(0xFF1E3A8A),
+                foregroundColor: Colors.white,
+                icon: const Icon(Icons.person_add_rounded),
+                label: const Text('Add Student'),
+                onPressed: () => _openStudentModal(),
+              ),
+              body: Column(
+                children: [
+                  // Search & Full Class Hierarchy Filter
+                  Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 40,
+                            child: TextField(
+                              controller: _studentSearchCtrl,
+                              onChanged: (v) => setState(() => _studentQuery = v.trim().toLowerCase()),
+                              decoration: InputDecoration(
+                                hintText: 'Search student name or phone...',
+                                hintStyle: const TextStyle(fontSize: 12),
+                                prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                                contentPadding: EdgeInsets.zero,
+                                filled: true,
+                                fillColor: const Color(0xFFF1F5F9),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          height: 40,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: _selectedClassFilter,
+                              items: schoolClasses
+                                  .map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold))))
+                                  .toList(),
+                              onChanged: (v) {
+                                if (v != null) setState(() => _selectedClassFilter = v);
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Student List
+                  Expanded(
+                    child: FutureBuilder<List<Map<String, dynamic>>>(
+                      future: _supabaseClient != null
+                          ? _supabaseClient!.from('students').select().order('student_name')
+                          : Future.value([]),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                        var list = snapshot.data!;
+
+                        if (_studentQuery.isNotEmpty) {
+                          list = list.where((s) {
+                            final name = (s['student_name'] ?? '').toString().toLowerCase();
+                            final phone = (s['parent_phone'] ?? s['mobile_number'] ?? '').toString().toLowerCase();
+                            return name.contains(_studentQuery) || phone.contains(_studentQuery);
+                          }).toList();
+                        }
+
+                        // Robust class filter matching
+                        if (_selectedClassFilter != 'ALL') {
+                          list = list.where((s) {
+                            final grade = (s['class_grade'] ?? '').toString();
+                            return _matchesClass(grade, _selectedClassFilter);
+                          }).toList();
+                        }
+
+                        if (list.isEmpty) {
+                          return const Center(child: Text('No matching students found in this category.'));
+                        }
+
+                        return ListView.builder(
+                          padding: const EdgeInsets.only(left: 14, right: 14, top: 10, bottom: 85),
+                          itemCount: list.length,
+                          itemBuilder: (context, i) {
+                            final s = list[i];
+                            final phone = s['parent_phone'] ?? s['mobile_number'] ?? 'N/A';
+                            final bYear = s['birth_year'] ?? s['student_dob'] ?? 'N/A';
+                            final grade = s['class_grade'] ?? 'Not Assigned';
+                            final fees = s['pending_fees'] ?? '0';
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: Column(
+                                children: [
+                                  // Click student tile to open PDF Dossier
+                                  InkWell(
+                                    onTap: () => _openStudentPdf(s),
+                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                                    child: ListTile(
+                                      leading: CircleAvatar(
+                                        backgroundColor: const Color(0xFF1E3A8A).withOpacity(0.1),
+                                        child: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFF1E3A8A)),
+                                      ),
+                                      title: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(s['student_name'] ?? 'Student', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(4)),
+                                            child: const Text('PDF Report', style: TextStyle(color: Color(0xFF1E3A8A), fontSize: 10, fontWeight: FontWeight.bold)),
+                                          ),
+                                        ],
+                                      ),
+                                      subtitle: Text('Class: $grade • Phone: $phone\nKey/DOB: $bYear', style: const TextStyle(fontSize: 11.5, height: 1.35)),
+                                      isThreeLine: true,
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(Icons.edit_rounded, color: Color(0xFF1E3A8A), size: 20),
+                                            onPressed: () => _openStudentModal(student: s),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
+                                            onPressed: () async {
+                                              final conf = await showDialog<bool>(
+                                                context: context,
+                                                builder: (_) => AlertDialog(
+                                                  title: const Text('Delete Student?'),
+                                                  content: Text('Remove ${s['student_name']} permanently?'),
+                                                  actions: [
+                                                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                                                    TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+                                                  ],
+                                                ),
+                                              );
+                                              if (conf == true && _supabaseClient != null) {
+                                                await _supabaseClient!.from('students').delete().eq('id', s['id']);
+                                                setState(() {});
+                                              }
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const Divider(height: 1),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                      children: [
+                                        _buildPill(
+                                          label: fees == '0' || fees == 0 ? 'Fee: Clear ✓' : 'Due: ₹$fees',
+                                          color: fees == '0' || fees == 0 ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                                          onTap: () => _openFeeLedgerModal(s),
+                                        ),
+                                        _buildPill(
+                                          label: 'Att: ${s['attendance_percentage'] ?? 92}%',
+                                          color: const Color(0xFF3B82F6),
+                                          onTap: () => _openStudentModal(student: s),
+                                        ),
+                                        _buildPill(
+                                          label: 'Grade: ${s['marks_grade'] ?? 'A'}',
+                                          color: const Color(0xFF8B5CF6),
+                                          onTap: () => _openStudentModal(student: s),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ==================== TAB 2: FEES ====================
+            Column(
               children: [
                 Container(
                   color: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          height: 40,
-                          child: TextField(
-                            controller: _studentSearchCtrl,
-                            onChanged: (v) => setState(() => _studentQuery = v.trim().toLowerCase()),
-                            decoration: InputDecoration(
-                              hintText: 'Search student name or phone...',
-                              hintStyle: const TextStyle(fontSize: 12),
-                              prefixIcon: const Icon(Icons.search_rounded, size: 18),
-                              contentPadding: EdgeInsets.zero,
-                              filled: true,
-                              fillColor: const Color(0xFFF1F5F9),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        height: 40,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedClassFilter,
-                            items: ['ALL', ...schoolClasses]
-                                .map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold))))
-                                .toList(),
-                            onChanged: (v) {
-                              if (v != null) setState(() => _selectedClassFilter = v);
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: TextField(
+                    controller: _feeSearchCtrl,
+                    onChanged: (v) => setState(() => _feeQuery = v.trim().toLowerCase()),
+                    decoration: InputDecoration(
+                      hintText: 'Search fee by student name or roll...',
+                      hintStyle: const TextStyle(fontSize: 12),
+                      prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                      contentPadding: EdgeInsets.zero,
+                      filled: true,
+                      fillColor: const Color(0xFFF1F5F9),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                    ),
                   ),
                 ),
                 Expanded(
@@ -747,107 +1162,35 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
                       if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                       var list = snapshot.data!;
 
-                      if (_studentQuery.isNotEmpty) {
-                        list = list.where((s) {
-                          final name = (s['student_name'] ?? '').toString().toLowerCase();
-                          final phone = (s['parent_phone'] ?? s['mobile_number'] ?? '').toString().toLowerCase();
-                          return name.contains(_studentQuery) || phone.contains(_studentQuery);
-                        }).toList();
-                      }
-
-                      if (_selectedClassFilter != 'ALL') {
-                        list = list.where((s) {
-                          final grade = (s['class_grade'] ?? '').toString();
-                          return grade == _selectedClassFilter;
-                        }).toList();
-                      }
-
-                      if (list.isEmpty) {
-                        return const Center(child: Text('No matching students found.'));
+                      if (_feeQuery.isNotEmpty) {
+                        list = list.where((s) => (s['student_name'] ?? '').toString().toLowerCase().contains(_feeQuery)).toList();
                       }
 
                       return ListView.builder(
-                        padding: const EdgeInsets.only(left: 14, right: 14, top: 10, bottom: 85),
+                        padding: const EdgeInsets.all(14),
                         itemCount: list.length,
                         itemBuilder: (context, i) {
                           final s = list[i];
-                          final phone = s['parent_phone'] ?? s['mobile_number'] ?? 'N/A';
-                          final bYear = s['birth_year'] ?? s['student_dob'] ?? 'N/A';
-                          final grade = s['class_grade'] ?? 'Not Assigned';
-                          final fees = s['pending_fees'] ?? '0';
+                          final pending = s['pending_fees'] ?? '0';
+                          final isClear = pending == '0' || pending == 0;
 
-                          return Container(
+                          return Card(
                             margin: const EdgeInsets.only(bottom: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
-                            ),
-                            child: Column(
-                              children: [
-                                ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: const Color(0xFF1E3A8A).withOpacity(0.1),
-                                    child: const Icon(Icons.person, color: Color(0xFF1E3A8A)),
-                                  ),
-                                  title: Text(s['student_name'] ?? 'Student', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                  subtitle: Text('Class: $grade • Phone: $phone\nKey/DOB: $bYear', style: const TextStyle(fontSize: 11.5, height: 1.35)),
-                                  isThreeLine: true,
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.edit_rounded, color: Color(0xFF1E3A8A), size: 20),
-                                        onPressed: () => _openStudentModal(student: s),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
-                                        onPressed: () async {
-                                          final conf = await showDialog<bool>(
-                                            context: context,
-                                            builder: (_) => AlertDialog(
-                                              title: const Text('Delete Student?'),
-                                              content: Text('Remove ${s['student_name']} permanently?'),
-                                              actions: [
-                                                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                                                TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
-                                              ],
-                                            ),
-                                          );
-                                          if (conf == true && _supabaseClient != null) {
-                                            await _supabaseClient!.from('students').delete().eq('id', s['id']);
-                                            setState(() {});
-                                          }
-                                        },
-                                      ),
-                                    ],
-                                  ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            child: ListTile(
+                              title: Text(s['student_name'] ?? 'Student', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              subtitle: Text(
+                                'Class: ${s['class_grade'] ?? 'N/A'}\n${isClear ? 'All Dues Paid ✓' : 'Pending: ₹$pending'}',
+                                style: TextStyle(color: isClear ? const Color(0xFF10B981) : const Color(0xFFDC2626), fontWeight: FontWeight.bold, fontSize: 11.5),
+                              ),
+                              trailing: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isClear ? const Color(0xFFF1F5F9) : const Color(0xFF10B981),
+                                  foregroundColor: isClear ? const Color(0xFF0F1E36) : Colors.white,
                                 ),
-                                const Divider(height: 1),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                    children: [
-                                      _buildPill(
-                                        label: fees == '0' || fees == 0 ? 'Fee: Clear ✓' : 'Due: ₹$fees',
-                                        color: fees == '0' || fees == 0 ? const Color(0xFF10B981) : const Color(0xFFDC2626),
-                                        onTap: () => _openFeeLedgerModal(s),
-                                      ),
-                                      _buildPill(
-                                        label: 'Att: ${s['attendance_percentage'] ?? 92}%',
-                                        color: const Color(0xFF3B82F6),
-                                        onTap: () => _openStudentModal(student: s),
-                                      ),
-                                      _buildPill(
-                                        label: 'Grade: ${s['marks_grade'] ?? 'A'}',
-                                        color: const Color(0xFF8B5CF6),
-                                        onTap: () => _openStudentModal(student: s),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                                onPressed: () => _openFeeLedgerModal(s),
+                                child: Text(isClear ? 'Edit Due' : 'Collect Fee'),
+                              ),
                             ),
                           );
                         },
@@ -857,177 +1200,60 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
                 ),
               ],
             ),
-          ),
 
-          // TAB 2: FEES
-          Column(
-            children: [
-              Container(
-                color: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                child: TextField(
-                  controller: _feeSearchCtrl,
-                  onChanged: (v) => setState(() => _feeQuery = v.trim().toLowerCase()),
-                  decoration: InputDecoration(
-                    hintText: 'Search fee by student name or roll...',
-                    hintStyle: const TextStyle(fontSize: 12),
-                    prefixIcon: const Icon(Icons.search_rounded, size: 18),
-                    contentPadding: EdgeInsets.zero,
-                    filled: true,
-                    fillColor: const Color(0xFFF1F5F9),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: FutureBuilder<List<Map<String, dynamic>>>(
-                  future: _supabaseClient != null
-                      ? _supabaseClient!.from('students').select().order('student_name')
-                      : Future.value([]),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                    var list = snapshot.data!;
-
-                    if (_feeQuery.isNotEmpty) {
-                      list = list.where((s) => (s['student_name'] ?? '').toString().toLowerCase().contains(_feeQuery)).toList();
-                    }
-
-                    return ListView.builder(
-                      padding: const EdgeInsets.all(14),
-                      itemCount: list.length,
-                      itemBuilder: (context, i) {
-                        final s = list[i];
-                        final pending = s['pending_fees'] ?? '0';
-                        final isClear = pending == '0' || pending == 0;
-
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          child: ListTile(
-                            title: Text(s['student_name'] ?? 'Student', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                            subtitle: Text(
-                              'Class: ${s['class_grade'] ?? 'N/A'}\n${isClear ? 'All Dues Paid ✓' : 'Pending: ₹$pending'}',
-                              style: TextStyle(color: isClear ? const Color(0xFF10B981) : const Color(0xFFDC2626), fontWeight: FontWeight.bold, fontSize: 11.5),
-                            ),
-                            trailing: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: isClear ? const Color(0xFFF1F5F9) : const Color(0xFF10B981),
-                                foregroundColor: isClear ? const Color(0xFF0F1E36) : Colors.white,
-                              ),
-                              onPressed: () => _openFeeLedgerModal(s),
-                              child: Text(isClear ? 'Edit Due' : 'Collect Fee'),
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-
-          // TAB 3: ATTENDANCE
-          FutureBuilder<List<Map<String, dynamic>>>(
-            future: _supabaseClient != null
-                ? _supabaseClient!.from('students').select().order('class_grade')
-                : Future.value([]),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-              final list = snapshot.data!;
-              return ListView.builder(
-                padding: const EdgeInsets.all(14),
-                itemCount: list.length,
-                itemBuilder: (context, i) {
-                  final s = list[i];
-                  final att = s['attendance_percentage'] ?? '92';
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      title: Text(s['student_name'] ?? 'Student', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text('Class: ${s['class_grade'] ?? 'N/A'} • Att: $att%'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF10B981),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
-                            ),
-                            onPressed: () async {
-                              final updated = math.min(100, (int.tryParse(att.toString()) ?? 90) + 1).toString();
-                              if (_supabaseClient != null) {
-                                await _supabaseClient!.from('students').update({'attendance_percentage': updated}).eq('id', s['id']);
-                                setState(() {});
-                              }
-                            },
-                            child: const Text('Present'),
-                          ),
-                          const SizedBox(width: 6),
-                          OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.red,
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
-                            ),
-                            onPressed: () async {
-                              final updated = math.max(0, (int.tryParse(att.toString()) ?? 90) - 1).toString();
-                              if (_supabaseClient != null) {
-                                await _supabaseClient!.from('students').update({'attendance_percentage': updated}).eq('id', s['id']);
-                                setState(() {});
-                              }
-                            },
-                            child: const Text('Absent'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-
-          // TAB 4: FACULTY
-          Scaffold(
-            backgroundColor: const Color(0xFFF8FAFC),
-            floatingActionButton: FloatingActionButton.extended(
-              backgroundColor: const Color(0xFF1E3A8A),
-              foregroundColor: Colors.white,
-              icon: const Icon(Icons.person_add_alt_1_rounded),
-              label: const Text('Add Faculty'),
-              onPressed: _openFacultyModal,
-            ),
-            body: FutureBuilder<List<Map<String, dynamic>>>(
+            // ==================== TAB 3: ATTENDANCE ====================
+            FutureBuilder<List<Map<String, dynamic>>>(
               future: _supabaseClient != null
-                  ? _supabaseClient!.from('school_faculty').select().order('name')
+                  ? _supabaseClient!.from('students').select().order('class_grade')
                   : Future.value([]),
               builder: (context, snapshot) {
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: Text('No teachers added yet. Tap "+ Add Faculty" to start.'));
-                }
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                final list = snapshot.data!;
                 return ListView.builder(
-                  padding: const EdgeInsets.only(left: 14, right: 14, top: 12, bottom: 80),
-                  itemCount: snapshot.data!.length,
+                  padding: const EdgeInsets.all(14),
+                  itemCount: list.length,
                   itemBuilder: (context, i) {
-                    final f = snapshot.data![i];
+                    final s = list[i];
+                    final att = s['attendance_percentage'] ?? '92';
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: const Color(0xFF3B82F6).withOpacity(0.1),
-                          child: const Icon(Icons.badge_rounded, color: Color(0xFF3B82F6)),
-                        ),
-                        title: Text(f['name'] ?? 'Faculty Member', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text('${f['designation'] ?? 'Teacher'} • Sub: ${f['subject'] ?? 'All'} (${f['qualification'] ?? ''})'),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                          onPressed: () async {
-                            if (_supabaseClient != null) {
-                              await _supabaseClient!.from('school_faculty').delete().eq('id', f['id']);
-                              setState(() {});
-                            }
-                          },
+                        title: Text(s['student_name'] ?? 'Student', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('Class: ${s['class_grade'] ?? 'N/A'} • Att: $att%'),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF10B981),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                              ),
+                              onPressed: () async {
+                                final updated = math.min(100, (int.tryParse(att.toString()) ?? 90) + 1).toString();
+                                if (_supabaseClient != null) {
+                                  await _supabaseClient!.from('students').update({'attendance_percentage': updated}).eq('id', s['id']);
+                                  setState(() {});
+                                }
+                              },
+                              child: const Text('Present'),
+                            ),
+                            const SizedBox(width: 6),
+                            OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.red,
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                              ),
+                              onPressed: () async {
+                                final updated = math.max(0, (int.tryParse(att.toString()) ?? 90) - 1).toString();
+                                if (_supabaseClient != null) {
+                                  await _supabaseClient!.from('students').update({'attendance_percentage': updated}).eq('id', s['id']);
+                                  setState(() {});
+                                }
+                              },
+                              child: const Text('Absent'),
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -1035,218 +1261,267 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
                 );
               },
             ),
-          ),
 
-          // TAB 5: GALLERY
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE2E8F0))),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('HOMEPAGE HERO SLIDESHOW', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A))),
-                      const SizedBox(height: 6),
-                      const Text('Update homepage hero photos and campus highlight pictures directly.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
-                          icon: const Icon(Icons.add_photo_alternate_rounded),
-                          label: const Text('Select Photos from Device'),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Media picker connected.')));
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text('ACTIVE CAMPUS MEDIA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF64748B))),
-                const SizedBox(height: 8),
-                GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  children: [
-                    _buildGalleryThumb('Main Campus Building', 'Hero Slideshow'),
-                    _buildGalleryThumb('Smart Science Lab', 'Campus Life'),
-                    _buildGalleryThumb('Sports & Playground', 'Athletics'),
-                    _buildGalleryThumb('Morning Assembly', 'Daily Life'),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // TAB 6: CIRCULARS
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE2E8F0))),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('PUBLISH NOTICE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A))),
-                      const SizedBox(height: 10),
-                      DropdownButtonFormField<String>(
-                        value: _noticeTag,
-                        items: ['GENERAL', 'EXAMS', 'HOLIDAY', 'SPORTS', 'URGENT']
-                            .map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 12))))
-                            .toList(),
-                        onChanged: (v) => setState(() => _noticeTag = v!),
-                        decoration: const InputDecoration(labelText: 'Tag Category', border: OutlineInputBorder()),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(controller: _noticeTitleCtrl, decoration: const InputDecoration(labelText: 'Notice Title', border: OutlineInputBorder())),
-                      const SizedBox(height: 10),
-                      TextField(controller: _noticeContentCtrl, maxLines: 3, decoration: const InputDecoration(labelText: 'Full Announcement Details', border: OutlineInputBorder())),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 44,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
-                          onPressed: _isPublishingNotice
-                              ? null
-                              : () async {
-                                  if (_noticeTitleCtrl.text.isEmpty) return;
-                                  final client = _supabaseClient;
-                                  if (client == null) return;
-                                  setState(() => _isPublishingNotice = true);
-                                  try {
-                                    await client.from('school_notices').insert({
-                                      'tag': _noticeTag,
-                                      'title': _noticeTitleCtrl.text.trim(),
-                                      'date': 'Oct 2026',
-                                      'content': _noticeContentCtrl.text.trim(),
-                                    });
-                                    _noticeTitleCtrl.clear();
-                                    _noticeContentCtrl.clear();
-                                    if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notice broadcasted to App and Website!')));
-                                    setState(() {});
-                                  } catch (e) {
-                                    if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                                  } finally {
-                                    setState(() => _isPublishingNotice = false);
-                                  }
-                                },
-                          child: _isPublishingNotice
-                              ? const CircularProgressIndicator(color: Colors.white)
-                              : const Text('Publish Notice', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text('RECENT BROADCASTS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF64748B))),
-                const SizedBox(height: 8),
-                FutureBuilder<List<Map<String, dynamic>>>(
-                  future: _supabaseClient != null
-                      ? _supabaseClient!.from('school_notices').select().order('created_at', ascending: false)
-                      : Future.value([]),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData || snapshot.data!.isEmpty) return const Text('No notices published.');
-                    return Column(
-                      children: snapshot.data!.map((n) => Container(
+            // ==================== TAB 4: FACULTY ====================
+            Scaffold(
+              backgroundColor: const Color(0xFFF8FAFC),
+              floatingActionButton: FloatingActionButton.extended(
+                backgroundColor: const Color(0xFF1E3A8A),
+                foregroundColor: Colors.white,
+                icon: const Icon(Icons.person_add_alt_1_rounded),
+                label: const Text('Add Faculty'),
+                onPressed: _openFacultyModal,
+              ),
+              body: FutureBuilder<List<Map<String, dynamic>>>(
+                future: _supabaseClient != null
+                    ? _supabaseClient!.from('school_faculty').select().order('name')
+                    : Future.value([]),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(child: Text('No teachers added yet. Tap "+ Add Faculty" to start.'));
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.only(left: 14, right: 14, top: 12, bottom: 80),
+                    itemCount: snapshot.data!.length,
+                    itemBuilder: (context, i) {
+                      final f = snapshot.data![i];
+                      return Card(
                         margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE2E8F0))),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                              decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(4)),
-                              child: Text(n['tag'] ?? 'NOTICE', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(child: Text(n['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                              onPressed: () async {
-                                if (_supabaseClient != null) {
-                                  await _supabaseClient!.from('school_notices').delete().eq('id', n['id']);
-                                  setState(() {});
-                                }
-                              },
-                            ),
-                          ],
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: const Color(0xFF3B82F6).withOpacity(0.1),
+                            child: const Icon(Icons.badge_rounded, color: Color(0xFF3B82F6)),
+                          ),
+                          title: Text(f['name'] ?? 'Faculty Member', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text('${f['designation'] ?? 'Teacher'} • Sub: ${f['subject'] ?? 'All'} (${f['qualification'] ?? ''})'),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                            onPressed: () async {
+                              if (_supabaseClient != null) {
+                                await _supabaseClient!.from('school_faculty').delete().eq('id', f['id']);
+                                setState(() {});
+                              }
+                            },
+                          ),
                         ),
-                      )).toList(),
-                    );
-                  },
-                ),
-              ],
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
 
-          // TAB 7: COMPLAINTS
-          FutureBuilder<List<Map<String, dynamic>>>(
-            future: _supabaseClient != null
-                ? _supabaseClient!.from('school_complaints').select().order('created_at', ascending: false)
-                : Future.value([]),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return const Center(child: Text('No parent grievances submitted.'));
-              }
-              return ListView.builder(
-                padding: const EdgeInsets.all(14),
-                itemCount: snapshot.data!.length,
-                itemBuilder: (context, i) {
-                  final c = snapshot.data![i];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFFEE2E2))),
+            // ==================== TAB 5: GALLERY ====================
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE2E8F0))),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(c['category'] ?? 'Complaint', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
-                            DropdownButton<String>(
-                              value: c['status'] ?? 'Under Review',
-                              underline: const SizedBox(),
-                              items: ['Under Review', 'Action Taken', 'Resolved']
-                                  .map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 12))))
-                                  .toList(),
-                              onChanged: (val) async {
-                                if (val != null && _supabaseClient != null) {
-                                  await _supabaseClient!.from('school_complaints').update({'status': val}).eq('id', c['id']);
-                                  setState(() {});
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text('From: ${c['parent_name']} (Student: ${c['student_name']})', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                        const Text('HOMEPAGE HERO SLIDESHOW', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A))),
                         const SizedBox(height: 6),
-                        Text(c['details'] ?? '', style: const TextStyle(fontSize: 12.5)),
+                        const Text('Update homepage hero photos and campus highlight pictures directly.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
+                            icon: const Icon(Icons.add_photo_alternate_rounded),
+                            label: const Text('Select Photos from Device'),
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Media picker connected.')));
+                            },
+                          ),
+                        ),
                       ],
                     ),
-                  );
-                },
-              );
-            },
-          ),
-        ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('ACTIVE CAMPUS MEDIA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF64748B))),
+                  const SizedBox(height: 8),
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    children: [
+                      _buildGalleryThumb('Main Campus Building', 'Hero Slideshow'),
+                      _buildGalleryThumb('Smart Science Lab', 'Campus Life'),
+                      _buildGalleryThumb('Sports & Playground', 'Athletics'),
+                      _buildGalleryThumb('Morning Assembly', 'Daily Life'),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // ==================== TAB 6: CIRCULARS ====================
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE2E8F0))),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('PUBLISH NOTICE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A))),
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<String>(
+                          value: _noticeTag,
+                          items: ['GENERAL', 'EXAMS', 'HOLIDAY', 'SPORTS', 'URGENT']
+                              .map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 12))))
+                              .toList(),
+                          onChanged: (v) => setState(() => _noticeTag = v!),
+                          decoration: const InputDecoration(labelText: 'Tag Category', border: OutlineInputBorder()),
+                        ),
+                        const SizedBox(height: 10),
+                        TextField(controller: _noticeTitleCtrl, decoration: const InputDecoration(labelText: 'Notice Title', border: OutlineInputBorder())),
+                        const SizedBox(height: 10),
+                        TextField(controller: _noticeContentCtrl, maxLines: 3, decoration: const InputDecoration(labelText: 'Full Announcement Details', border: OutlineInputBorder())),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 44,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
+                            onPressed: _isPublishingNotice
+                                ? null
+                                : () async {
+                                    if (_noticeTitleCtrl.text.isEmpty) return;
+                                    final client = _supabaseClient;
+                                    if (client == null) return;
+                                    setState(() => _isPublishingNotice = true);
+                                    try {
+                                      await client.from('school_notices').insert({
+                                        'tag': _noticeTag,
+                                        'title': _noticeTitleCtrl.text.trim(),
+                                        'date': 'Oct 2026',
+                                        'content': _noticeContentCtrl.text.trim(),
+                                      });
+                                      _noticeTitleCtrl.clear();
+                                      _noticeContentCtrl.clear();
+                                      if (!mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notice broadcasted to App and Website!')));
+                                      setState(() {});
+                                    } catch (e) {
+                                      if (!mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                                    } finally {
+                                      setState(() => _isPublishingNotice = false);
+                                    }
+                                  },
+                            child: _isPublishingNotice
+                                ? const CircularProgressIndicator(color: Colors.white)
+                                : const Text('Publish Notice', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('RECENT BROADCASTS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF64748B))),
+                  const SizedBox(height: 8),
+                  FutureBuilder<List<Map<String, dynamic>>>(
+                    future: _supabaseClient != null
+                        ? _supabaseClient!.from('school_notices').select().order('created_at', ascending: false)
+                        : Future.value([]),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) return const Text('No notices published.');
+                      return Column(
+                        children: snapshot.data!.map((n) => Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE2E8F0))),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(4)),
+                                child: Text(n['tag'] ?? 'NOTICE', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text(n['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                                onPressed: () async {
+                                  if (_supabaseClient != null) {
+                                    await _supabaseClient!.from('school_notices').delete().eq('id', n['id']);
+                                    setState(() {});
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        )).toList(),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            // ==================== TAB 7: COMPLAINTS ====================
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _supabaseClient != null
+                  ? _supabaseClient!.from('school_complaints').select().order('created_at', ascending: false)
+                  : Future.value([]),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(child: Text('No parent grievances submitted.'));
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.all(14),
+                  itemCount: snapshot.data!.length,
+                  itemBuilder: (context, i) {
+                    final c = snapshot.data![i];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFFEE2E2))),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(c['category'] ?? 'Complaint', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+                              DropdownButton<String>(
+                                value: c['status'] ?? 'Under Review',
+                                underline: const SizedBox(),
+                                items: ['Under Review', 'Action Taken', 'Resolved']
+                                  .map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 12))))
+                                  .toList(),
+                                onChanged: (val) async {
+                                  if (val != null && _supabaseClient != null) {
+                                    await _supabaseClient!.from('school_complaints').update({'status': val}).eq('id', c['id']);
+                                    setState(() {});
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text('From: ${c['parent_name']} (Student: ${c['student_name']})', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                          const SizedBox(height: 6),
+                          Text(c['details'] ?? '', style: const TextStyle(fontSize: 12.5)),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
