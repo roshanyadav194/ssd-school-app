@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'login_screen.dart';
+import 'school_discovery_screen.dart';
 
 const String supabaseUrl = 'https://shlzyjkkckmdxolwenvk.supabase.co';
 const String supabaseAnonKey = 'sb_publishable_6yYdqREcVbFa_65ARl1EWA_rGjENe1n';
@@ -154,13 +154,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => LoginScreen()),
+                              MaterialPageRoute(builder: (_) => const SchoolDiscoveryScreen()),
                             );
                           },
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text('Login to Portal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              Text('Explore School & Portal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                               SizedBox(width: 8),
                               Icon(Icons.arrow_forward_rounded, size: 18),
                             ],
