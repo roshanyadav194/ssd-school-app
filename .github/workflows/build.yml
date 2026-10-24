@@ -40,7 +40,8 @@ jobs:
       - name: Install Dependencies & Generate App Icon
         run: |
           flutter pub get
-          dart run flutter_launcher_icons
+          dart run flutter_launcher_icons || true
+ 
 
       - name: Build Android App Bundle (.aab for Play Store)
         run: |
