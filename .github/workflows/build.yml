@@ -25,6 +25,15 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Organize Dart Source Structure
+        run: |
+          mkdir -p lib/screens
+          [ -f main.dart ] && mv main.dart lib/main.dart || true
+          for f in splash_screen.dart login_screen.dart school_discovery_screen.dart dashboard_screen.dart admin_hub_screen.dart; do
+            [ -f "$f" ] && mv "$f" "lib/screens/$f" || true
+            [ -f "lib/$f" ] && mv "lib/$f" "lib/screens/$f" || true
+          done
+
       - name: Create Base Flutter Project
         run: |
           flutter create --org com.ssdconvent --project-name ssd_school_app temp_app
@@ -32,16 +41,27 @@ jobs:
           cp -rn temp_app/web ./ 2>/dev/null || true
           rm -rf temp_app
 
-      - name: Configure Android Permissions & MinSDK
+      - name: Safely Configure Android Permissions
         run: |
-          sed -i 's/minSdkVersion .*/minSdkVersion 21/' android/app/build.gradle || true
-          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <queries>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="https" />\n        </intent>\n        <intent>\n            <action android:name="android.intent.action.DIAL" />\n            <data android:scheme="tel" />\n        </intent>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="geo" />\n        </intent>\n    </queries>' android/app/src/main/AndroidManifest.xml || true
+          python3 -c '
+          p = "android/app/src/main/AndroidManifest.xml"
+          with open(p, "r") as f: c = f.read()
+          perms = """    <uses-permission android:name="android.permission.INTERNET"/>
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+              <queries>
+                  <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="https" /></intent>
+                  <intent><action android:name="android.intent.action.DIAL" /><data android:scheme="tel" /></intent>
+                  <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="geo" /></intent>
+              </queries>
+          </manifest>"""
+          if "android.permission.INTERNET" not in c:
+              c = c.replace("</manifest>", perms)
+              with open(p, "w") as f: f.write(c)
+          '
 
-      - name: Install Dependencies & Generate App Icon
+      - name: Install Dependencies
         run: |
           flutter pub get
-          dart run flutter_launcher_icons || true
- 
 
       - name: Build Android App Bundle (.aab for Play Store)
         run: |
