@@ -25,14 +25,11 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Organize Dart Source Structure
+      - name: Prepare Files & App Logo
         run: |
-          mkdir -p lib/screens
+          mkdir -p lib
           [ -f main.dart ] && mv main.dart lib/main.dart || true
-          for f in splash_screen.dart login_screen.dart school_discovery_screen.dart dashboard_screen.dart admin_hub_screen.dart; do
-            [ -f "$f" ] && mv "$f" "lib/screens/$f" || true
-            [ -f "lib/$f" ] && mv "lib/$f" "lib/screens/$f" || true
-          done
+          [ -f assets/app_logo.png ] && cp assets/app_logo.png ./app_logo.png || true
 
       - name: Create Base Flutter Project
         run: |
@@ -41,11 +38,12 @@ jobs:
           cp -rn temp_app/web ./ 2>/dev/null || true
           rm -rf temp_app
 
-      - name: Safely Configure Android Permissions
+      - name: Configure Android Permissions & App Name
         run: |
           python3 -c '
           p = "android/app/src/main/AndroidManifest.xml"
           with open(p, "r") as f: c = f.read()
+          c = c.replace("android:label=\"ssd_school_app\"", "android:label=\"S.S.D. Convent School\"")
           perms = """    <uses-permission android:name="android.permission.INTERNET"/>
               <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
               <queries>
@@ -56,12 +54,15 @@ jobs:
           </manifest>"""
           if "android.permission.INTERNET" not in c:
               c = c.replace("</manifest>", perms)
-              with open(p, "w") as f: f.write(c)
+          with open(p, "w") as f: f.write(c)
           '
 
-      - name: Install Dependencies
+      - name: Install Dependencies & Generate Launcher Icon
         run: |
           flutter pub get
+          if [ -f "app_logo.png" ]; then
+            dart run flutter_launcher_icons
+          fi
 
       - name: Build Android App Bundle (.aab for Play Store)
         run: |
