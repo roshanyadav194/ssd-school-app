@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'login_screen.dart';
@@ -9,27 +10,45 @@ class SchoolDiscoveryScreen extends StatefulWidget {
   State<SchoolDiscoveryScreen> createState() => _SchoolDiscoveryScreenState();
 }
 
-class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen> {
-  String? _selectedClass;
+class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  String _selectedExamClass = 'Class 10th - Board Practice';
 
-  Future<void> _makePhoneCall(String phoneNumber) async {
-    final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
-    if (await canLaunchUrl(launchUri)) {
-      await launchUrl(launchUri);
-    }
+  static const List<String> _examClasses = [
+    'Class 10th - Board Practice',
+    'Class 9th - Comprehensive Term',
+    'Class 8th - Science & Math Prep',
+    'Class 7th - General Assessment',
+    'Class 6th - Fundamental Test',
+    'Class 11th / 12th - Senior Stream Assessment',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat(reverse: true);
   }
 
-  Future<void> _openWhatsApp(String phone) async {
-    final Uri whatsappUri = Uri.parse('https://wa.me/$phone');
-    if (await canLaunchUrl(whatsappUri)) {
-      await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
-    }
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
   }
 
-  Future<void> _openMaps() async {
-    final Uri mapUri = Uri.parse('https://maps.google.com/?q=S.S.D.+Convent+School+Champapur+Janghai+Prayagraj');
-    if (await canLaunchUrl(mapUri)) {
-      await launchUrl(mapUri, mode: LaunchMode.externalApplication);
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open: $url')),
+        );
+      }
     }
   }
 
@@ -38,135 +57,222 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
+        elevation: 0,
         backgroundColor: Colors.white,
-        elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF0F1E36), size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.school_rounded, color: Color(0xFF1E3A8A), size: 22),
-            SizedBox(width: 8),
-            Text(
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E3A8A).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.school_rounded, color: Color(0xFF1E3A8A), size: 20),
+            ),
+            const SizedBox(width: 10),
+            const Text(
               'S.S.D. Convent School',
-              style: TextStyle(color: Color(0xFF0F1E36), fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(
+                color: Color(0xFF0F1E36),
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
+              ),
             ),
           ],
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 90),
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Hero Intro Banner
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0F1E36), Color(0xFF1E3A8A)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+            // ==================== AESTHETIC HERO BANNER ====================
+            AnimatedBuilder(
+              animation: _pulseController,
+              builder: (context, child) {
+                final pulse = _pulseController.value;
+                return Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color.lerp(const Color(0xFF0F1E36), const Color(0xFF1E3A8A), pulse)!,
+                        const Color(0xFF1E40AF),
+                        const Color(0xFF0A1128),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF1E3A8A).withOpacity(0.25 + 0.1 * pulse),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        right: -25,
+                        top: -25,
+                        child: Container(
+                          width: 130,
+                          height: 130,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.06),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: -35,
+                        left: -20,
+                        child: Container(
+                          width: 110,
+                          height: 110,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFFD97706).withOpacity(0.12),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(22.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFD97706).withOpacity(0.25),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: const Color(0xFFFBBF24).withOpacity(0.4),
+                                  width: 1,
+                                ),
+                              ),
+                              child: const Text(
+                                'LEARN • GROW • ACHIEVE',
+                                style: TextStyle(
+                                  color: Color(0xFFFDE68A),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.1,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            const Text(
+                              'A brighter future\nstarts here.',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                height: 1.2,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Champapur, Janghai, Prayagraj — A modern space where students learn with confidence, curiosity, and care.',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.85),
+                                fontSize: 12.5,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+
+            const SizedBox(height: 26),
+
+            // Section Label
+            Row(
+              children: [
+                Container(width: 4, height: 16, decoration: BoxDecoration(color: const Color(0xFFD97706), borderRadius: BorderRadius.circular(2))),
+                const SizedBox(width: 8),
+                const Text(
+                  'CAMPUS DIRECTORY & HELPLINE',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.1,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: const [
-                  BoxShadow(color: Color(0x1F000000), blurRadius: 10, offset: Offset(0, 4)),
-                ],
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'LEARN • GROW • ACHIEVE',
-                    style: TextStyle(color: Color(0xFFF59E0B), fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.2),
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    'A brighter future\nstarts here.',
-                    style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, height: 1.2),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Champapur, Janghai, Prayagraj — A place to learn with confidence, curiosity, and care.',
-                    style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 12.5, height: 1.4),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Section 1: Contact Details Header
-            const Text(
-              'GET IN TOUCH WITH US',
-              style: TextStyle(color: Color(0xFFD97706), fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Contact & Campus Directory',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F1E36)),
+              ],
             ),
             const SizedBox(height: 12),
 
-            // --- 2x2 VERTICAL GRID FOR CONTACT CARDS ---
+            // ==================== 2x2 MODERN DIRECTORY CARDS ====================
             GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: 0.82,
+              childAspectRatio: 0.95,
               children: [
-                // Box 1: Phone Helpline
-                _buildInfoCard(
+                _buildModernCard(
                   icon: Icons.phone_in_talk_rounded,
-                  iconColor: const Color(0xFF10B981),
+                  iconBg: const Color(0xFF10B981).withOpacity(0.12),
+                  iconColor: const Color(0xFF059669),
                   title: 'Phone Helpline',
-                  content: '+91 78808 84750\n+91 85608 22342',
-                  actionText: 'Call Office',
-                  onTap: () => _makePhoneCall('+917880884750'),
+                  subtitle: '+91 78808 84750\n+91 85608 22342',
+                  actionLabel: 'Call Office →',
+                  actionColor: const Color(0xFF059669),
+                  onTap: () => _launchUrl('tel:+917880884750'),
                 ),
-
-                // Box 2: Campus Address
-                _buildInfoCard(
+                _buildModernCard(
                   icon: Icons.location_on_rounded,
+                  iconBg: const Color(0xFFEF4444).withOpacity(0.12),
                   iconColor: const Color(0xFFDC2626),
-                  title: 'Campus Address',
-                  content: 'Champapur, Handia Road, Janghai, Prayagraj',
-                  actionText: 'Open in Maps',
-                  onTap: _openMaps,
+                  title: 'Campus Location',
+                  subtitle: 'Champapur, Handia Rd,\nJanghai, Prayagraj',
+                  actionLabel: 'Open in Maps →',
+                  actionColor: const Color(0xFFDC2626),
+                  onTap: () => _launchUrl('https://maps.google.com/?q=SSD+Convent+School+Janghai+Prayagraj'),
                 ),
-
-                // Box 3: Office Hours
-                _buildInfoCard(
+                _buildModernCard(
                   icon: Icons.access_time_filled_rounded,
-                  iconColor: const Color(0xFF3B82F6),
+                  iconBg: const Color(0xFF3B82F6).withOpacity(0.12),
+                  iconColor: const Color(0xFF2563EB),
                   title: 'Visiting Hours',
-                  content: 'Mon – Sat:\n8:00 AM – 2:00 PM\n(Closed Sundays)',
-                  actionText: null,
+                  subtitle: 'Mon – Sat:\n8:00 AM – 2:00 PM\n(Closed Sundays)',
+                  actionLabel: 'Front Office',
+                  actionColor: const Color(0xFF64748B),
                   onTap: null,
                 ),
-
-                // Box 4: Official Email
-                _buildInfoCard(
-                  icon: Icons.email_rounded,
-                  iconColor: const Color(0xFF8B5CF6),
+                _buildModernCard(
+                  icon: Icons.mark_email_read_rounded,
+                  iconBg: const Color(0xFF8B5CF6).withOpacity(0.12),
+                  iconColor: const Color(0xFF7C3AED),
                   title: 'Official Email',
-                  content: 'info@ssdconvent.com\nLogged queries via Parent Portal',
-                  actionText: 'Send Email',
-                  onTap: () async {
-                    final Uri emailUri = Uri(scheme: 'mailto', path: 'info@ssdconvent.com');
-                    if (await canLaunchUrl(emailUri)) await launchUrl(emailUri);
-                  },
+                  subtitle: 'info@ssdconvent.com\nPrincipal & Admin Desk',
+                  actionLabel: 'Send Email →',
+                  actionColor: const Color(0xFF7C3AED),
+                  onTap: () => _launchUrl('mailto:info@ssdconvent.com'),
                 ),
               ],
             ),
 
             const SizedBox(height: 16),
 
-            // Quick Call & WhatsApp Action Row
+            // ==================== FAST ACTION BUTTON ROW ====================
             Row(
               children: [
                 Expanded(
@@ -174,177 +280,161 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0F1E36),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 2,
                     ),
-                    onPressed: () => _makePhoneCall('+917880884750'),
-                    icon: const Icon(Icons.call_rounded, size: 18),
-                    label: const Text('Call School Office', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                    icon: const Icon(Icons.call_rounded, size: 19),
+                    label: const Text('Call School Office', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    onPressed: () => _launchUrl('tel:+917880884750'),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF16A34A),
+                      backgroundColor: const Color(0xFF10B981),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 2,
                     ),
-                    onPressed: () => _openWhatsApp('917880884750'),
-                    icon: const Icon(Icons.chat_bubble_rounded, size: 18),
-                    label: const Text('WhatsApp Chat', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                    icon: const Icon(Icons.chat_bubble_outline_rounded, size: 19),
+                    label: const Text('WhatsApp Chat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    onPressed: () => _launchUrl('https://wa.me/917880884750?text=Hello%20SSD%20Convent%20School'),
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
 
-            // Section 2: Online Exam & Assessment Portal
+            // ==================== POLISHED EXAM PORTAL TILE ====================
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFFDE68A)),
-                boxShadow: const [
-                  BoxShadow(color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 3)),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
                 ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'ASSESSMENT PORTAL',
-                    style: TextStyle(color: Color(0xFFD97706), fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD97706).withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.quiz_rounded, color: Color(0xFFD97706), size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('ASSESSMENT PORTAL', style: TextStyle(color: Color(0xFFD97706), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.8)),
+                          Text('Online Exam & Practice Tests', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F1E36))),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 10),
                   const Text(
-                    'SSD Online Exam & Practice Tests',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F1E36)),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Select your class to access timed practice tests, mock exams, and instant evaluations.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.3),
+                    'Select your student class to access timed mock examinations and automatic practice evaluation results.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.35),
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: _selectedClass,
-                    hint: const Text('-- Scroll & Choose Class --', style: TextStyle(fontSize: 13)),
-                    items: ['Nursery / KG', 'Class 1 to 5', 'Class 6 to 8', 'Class 9 & 10', 'Class 11 & 12']
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 13))))
-                        .toList(),
-                    onChanged: (val) => setState(() => _selectedClass = val),
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      filled: true,
-                      fillColor: const Color(0xFFF8FAFC),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFCBD5E1)),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedExamClass,
+                        isExpanded: true,
+                        items: _examClasses
+                            .map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600))))
+                            .toList(),
+                        onChanged: (v) {
+                          if (v != null) setState(() => _selectedExamClass = v);
+                        },
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     height: 46,
-                    child: ElevatedButton(
+                    child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1E3A8A),
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
+                      icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                      label: const Text('Proceed to Exam Hall', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       onPressed: () {
-                        if (_selectedClass == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please select a class first')),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Proceeding to practice exam for $_selectedClass...')),
-                          );
-                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Connecting to $_selectedExamClass exam module...'),
+                            backgroundColor: const Color(0xFF1E3A8A),
+                          ),
+                        );
                       },
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('Proceed to Exam Hall', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          SizedBox(width: 8),
-                          Icon(Icons.arrow_forward_rounded, size: 16),
-                        ],
-                      ),
                     ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 28),
-
-            // Section 3: Campus & Student Life
-            const Text(
-              'PHOTO SHOWCASE',
-              style: TextStyle(color: Color(0xFFD97706), fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Campus & Student Life',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F1E36)),
-            ),
-            const SizedBox(height: 12),
-            _buildShowcaseTile(
-              title: 'Main School Building & Grounds',
-              subtitle: 'Modern campus located at Handia Road, Janghai',
-              icon: Icons.apartment_rounded,
-            ),
-            const SizedBox(height: 10),
-            _buildShowcaseTile(
-              title: 'Interactive Smart Classrooms',
-              subtitle: 'Equipped with visual educational tools',
-              icon: Icons.computer_rounded,
-            ),
-            const SizedBox(height: 10),
-            _buildShowcaseTile(
-              title: 'Science Activities & Assembly',
-              subtitle: 'Daily student growth, presentations, and morning assemblies',
-              icon: Icons.science_rounded,
-            ),
+            const SizedBox(height: 30),
           ],
         ),
       ),
-      bottomSheet: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+
+      // ==================== BOTTOM FLOATING LOGIN ACTION ====================
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, -4)),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
           ],
         ),
         child: SafeArea(
           child: SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
+            height: 52,
+            child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E3A8A),
+                backgroundColor: const Color(0xFF0F1E36),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 0,
               ),
+              icon: const Icon(Icons.login_rounded, size: 19),
+              label: const Text('Login to Family Portal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const LoginScreen()),
                 );
               },
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Login to Family Portal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                  SizedBox(width: 8),
-                  Icon(Icons.arrow_forward_rounded, size: 18),
-                ],
-              ),
             ),
           ),
         ),
@@ -352,104 +442,67 @@ class _SchoolDiscoveryScreenState extends State<SchoolDiscoveryScreen> {
     );
   }
 
-  Widget _buildInfoCard({
+  Widget _buildModernCard({
     required IconData icon,
+    required Color iconBg,
     required Color iconColor,
     required String title,
-    required String content,
-    String? actionText,
+    required String subtitle,
+    required String actionLabel,
+    required Color actionColor,
     VoidCallback? onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(color: Color(0x06000000), blurRadius: 6, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: iconColor, size: 20),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                title,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F1E36)),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                content,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.3),
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-          if (actionText != null && onTap != null)
-            GestureDetector(
-              onTap: onTap,
-              child: Row(
-                children: [
-                  Text(
-                    actionText,
-                    style: TextStyle(color: iconColor, fontSize: 11.5, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(Icons.arrow_forward_rounded, size: 12, color: iconColor),
-                ],
-              ),
-            )
-          else
-            const SizedBox(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildShowcaseTile({required String title, required String subtitle, required IconData icon}) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E3A8A).withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            child: Icon(icon, color: const Color(0xFF1E3A8A), size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F1E36))),
-                const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F1E36)),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B), height: 1.3),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
-          ),
-        ],
+            Text(
+              actionLabel,
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: actionColor),
+            ),
+          ],
+        ),
       ),
     );
   }
