@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/splash_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load saved theme preference
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final isDark = prefs.getBool('ssd_dark_mode') ?? false;
+    appThemeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
+  } catch (_) {}
+
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -21,61 +30,58 @@ class SSDConventApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'S.S.D. Convent School',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-        primaryColor: const Color(0xFF1E3A8A),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1E3A8A),
-          primary: const Color(0xFF1E3A8A),
-          secondary: const Color(0xFFD97706),
-          surface: Colors.white,
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: Color(0xFF0F1E36),
-          elevation: 0,
-          centerTitle: false,
-          surfaceTintColor: Colors.transparent,
-        ),
-        cardTheme: CardThemeData(
-          color: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: Color(0xFFE2E8F0)),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: appThemeNotifier,
+      builder: (context, themeMode, _) {
+        return MaterialApp(
+          title: 'S.S.D. Convent School',
+          debugShowCheckedModeBanner: false,
+          themeMode: themeMode,
+          theme: ThemeData(
+            useMaterial3: true,
+            fontFamily: 'Roboto',
+            brightness: Brightness.light,
+            scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+            primaryColor: const Color(0xFF1E3A8A),
+            cardColor: Colors.white,
+            dividerColor: const Color(0xFFE2E8F0),
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF1E3A8A),
+              secondary: Color(0xFFD97706),
+              surface: Colors.white,
+              error: Color(0xFFDC2626),
+            ),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Colors.white,
+              foregroundColor: Color(0xFF0F1E36),
+              elevation: 0,
+              systemOverlayStyle: SystemUiOverlayStyle.dark,
+            ),
           ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: const Color(0xFFF8FAFC),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            fontFamily: 'Roboto',
+            brightness: Brightness.dark,
+            scaffoldBackgroundColor: const Color(0xFF0B1120),
+            primaryColor: const Color(0xFF3B82F6),
+            cardColor: const Color(0xFF1E293B),
+            dividerColor: const Color(0xFF334155),
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF3B82F6),
+              secondary: Color(0xFFF59E0B),
+              surface: Color(0xFF1E293B),
+              error: Color(0xFFEF4444),
+            ),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Color(0xFF0F172A),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              systemOverlayStyle: SystemUiOverlayStyle.light,
+            ),
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 1.6),
-          ),
-        ),
-        pageTransitionsTheme: const PageTransitionsTheme(
-          builders: {
-            TargetPlatform.android: ZoomPageTransitionsBuilder(),
-            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-          },
-        ),
-      ),
-      home: const SplashScreen(),
+          home: const SplashScreen(),
+        );
+      },
     );
   }
 }
