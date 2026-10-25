@@ -61,27 +61,27 @@ jobs:
                   f.write(c)
           EOF
 
-      - name: Configure Gradle Init Script (Fix SDK 36 & Bypass AAR Metadata Check)
+      - name: Configure Unified SDK 36 Across All Plugins
         run: |
-          # 1. Set SDK 36 for Flutter root app
+          # 1. Ensure local.properties targets SDK 36
           echo "flutter.compileSdkVersion=36" >> android/local.properties
           echo "flutter.targetSdkVersion=36" >> android/local.properties
           echo "flutter.minSdkVersion=21" >> android/local.properties
 
-          # 2. Inject global Gradle init script to disable checkReleaseAarMetadata and enforce SDK 36
-          mkdir -p ~/.gradle/init.d/
-          cat << 'EOF' > ~/.gradle/init.d/override_aar.gradle
-          allprojects {
+          # 2. Append subprojects rule directly into android/build.gradle
+          # This forces :file_picker, :app_links, and all plugins to compile with SDK 36
+          cat << 'EOF' >> android/build.gradle
+
+          subprojects {
               afterEvaluate { project ->
                   if (project.hasProperty("android")) {
-                      try {
-                          project.android {
-                              compileSdkVersion 36
+                      android {
+                          compileSdkVersion 36
+                          buildToolsVersion "36.0.0"
+                          defaultConfig {
+                              targetSdkVersion 36
                           }
-                      } catch (Exception ignored) {}
-                  }
-                  tasks.matching { it.name.contains("AarMetadata") }.configureEach {
-                      enabled = false
+                      }
                   }
               }
           }
