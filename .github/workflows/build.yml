@@ -46,12 +46,21 @@ jobs:
             sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <queries>\n        <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="https" /></intent>\n        <intent><action android:name="android.intent.action.DIAL" /><data android:scheme="tel" /></intent>\n        <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="geo" /></intent>\n    </queries>' android/app/src/main/AndroidManifest.xml
           fi
 
-      - name: Set CompileSdk to 36 for File Picker
+      - name: Force CompileSdk 36 in build.gradle
         run: |
           if [ -f "android/app/build.gradle" ]; then
+            # Replace any compileSdk or compileSdkVersion reference with explicit 36
             sed -i 's/compileSdk.*/compileSdk 36/g' android/app/build.gradle || true
+            sed -i 's/compileSdkVersion.*/compileSdkVersion 36/g' android/app/build.gradle || true
             sed -i 's/targetSdkVersion.*/targetSdkVersion 36/g' android/app/build.gradle || true
+            sed -i 's/targetSdk.*/targetSdk 36/g' android/app/build.gradle || true
             sed -i 's/minSdkVersion.*/minSdkVersion 21/g' android/app/build.gradle || true
+            sed -i 's/minSdk.*/minSdk 21/g' android/app/build.gradle || true
+
+            # Also write directly into local.properties to override flutter evaluation
+            echo "flutter.compileSdkVersion=36" >> android/local.properties
+            echo "flutter.targetSdkVersion=36" >> android/local.properties
+            echo "flutter.minSdkVersion=21" >> android/local.properties
           fi
 
       - name: Install Dependencies & Generate Launcher Icon
