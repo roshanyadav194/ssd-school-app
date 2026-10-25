@@ -29,7 +29,8 @@ jobs:
         run: |
           mkdir -p lib
           [ -f main.dart ] && mv main.dart lib/main.dart || true
-          [ -f assets/app_logo.png ] && cp assets/app_logo.png ./app_logo.png || true
+          # Corrected path to match your assets/icon/ folder structure
+          [ -f assets/icon/app_logo.png ] && cp assets/icon/app_logo.png ./app_logo.png || true
 
       - name: Create Base Flutter Project
         run: |
