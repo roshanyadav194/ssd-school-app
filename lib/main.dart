@@ -16,7 +16,7 @@ void main() async {
   try {
     await Supabase.initialize(
       url: 'https://shlzyjkkckmdxolwenvk.supabase.co',
-      anonKey: 'sb_publishable_6yYdqREcVbFa_65ARl1EWA_rGjENe1n', // <-- Paste your real eyJ anon key here before committing!
+      anonKey: 'sb_publishable_6yYdqREcVbFa_65ARl1EWA_rGjENe1n',
     );
   } catch (_) {}
 
@@ -1229,7 +1229,6 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
   }
 }
 
-// ================= NATIVE LOGIN SCREEN WITH DATABASE AUTH =================
 class NativeLoginScreen extends StatefulWidget {
   const NativeLoginScreen({super.key});
 
@@ -1291,8 +1290,15 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
         }
 
         if (mounted) {
-          // Routes to your actual dashboard_screen.dart
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const DashboardScreen()));
+          // Passes the required studentData parameter properly
+          Navigator.pushReplacement(
+            context, 
+            MaterialPageRoute(
+              builder: (_) => DashboardScreen(
+                studentData: <String, dynamic>{'phone': phone, 'dob': dob},
+              ),
+            ),
+          );
         }
 
       } else {
@@ -1318,7 +1324,6 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
           }
 
           if (mounted) {
-            // Routes to your actual admin_hub_screen.dart
             Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminHubScreen()));
           }
         }
