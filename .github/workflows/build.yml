@@ -38,33 +38,22 @@ jobs:
           cp -rn temp_app/web ./ 2>/dev/null || true
           rm -rf temp_app
 
-      - name: Configure Android Permissions, App Name & CompileSdk 34
+      - name: Configure Android Permissions & App Name
         run: |
-          python3 -c '
-          import re
-          p = "android/app/src/main/AndroidManifest.xml"
-          with open(p, "r") as f: c = f.read()
-          c = c.replace("android:label=\"ssd_school_app\"", "android:label=\"S.S.D. Convent School\"")
-          perms = """    <uses-permission android:name="android.permission.INTERNET"/>
-              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-              <queries>
-                  <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="https" /></intent>
-                  <intent><action android:name="android.intent.action.DIAL" /><data android:scheme="tel" /></intent>
-                  <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="geo" /></intent>
-              </queries>
-          </manifest>"""
-          if "android.permission.INTERNET" not in c:
-              c = c.replace("</manifest>", perms)
-          with open(p, "w") as f: f.write(c)
+          sed -i 's/android:label="ssd_school_app"/android:label="S.S.D. Convent School"/g' android/app/src/main/AndroidManifest.xml || true
+          
+          # Safely inject internet permission before </manifest>
+          if ! grep -q "android.permission.INTERNET" android/app/src/main/AndroidManifest.xml; then
+            sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <queries>\n        <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="https" /></intent>\n        <intent><action android:name="android.intent.action.DIAL" /><data android:scheme="tel" /></intent>\n        <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="geo" /></intent>\n    </queries>' android/app/src/main/AndroidManifest.xml
+          fi
 
-          # Upgrade compileSdk and targetSdk to 34 for file_picker compatibility
-          gb = "android/app/build.gradle"
-          with open(gb, "r") as f: g = f.read()
-          g = re.sub(r"compileSdk\s+\d+", "compileSdk 34", g)
-          g = re.sub(r"targetSdkVersion\s+\d+", "targetSdkVersion 34", g)
-          g = re.sub(r"minSdkVersion\s+\d+", "minSdkVersion 21", g)
-          with open(gb, "w") as f: f.write(g)
-          '
+      - name: Set CompileSdk to 34 for File Picker
+        run: |
+          if [ -f "android/app/build.gradle" ]; then
+            sed -i 's/compileSdk.*/compileSdk 34/g' android/app/build.gradle || true
+            sed -i 's/targetSdkVersion.*/targetSdkVersion 34/g' android/app/build.gradle || true
+            sed -i 's/minSdkVersion.*/minSdkVersion 21/g' android/app/build.gradle || true
+          fi
 
       - name: Install Dependencies & Generate Launcher Icon
         run: |
