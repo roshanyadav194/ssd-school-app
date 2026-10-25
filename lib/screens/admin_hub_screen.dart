@@ -1772,7 +1772,7 @@ class _AdminHubScreenState extends State<AdminHubScreen>
                                   child: Image.network(
                                     item['image_data']?.toString() ?? '',
                                     fit: BoxFit.cover,
-                                    errorCallback: (_, __, ___) => const Icon(Icons.image),
+                                    errorBuilder: (_, __, ___) => const Icon(Icons.image),
                                   ),
                                 ),
                               ),
@@ -2113,7 +2113,7 @@ class _AdminHubScreenState extends State<AdminHubScreen>
                                 color: isPdf ? const Color(0xFFD97706) : const Color(0xFF1E3A8A),
                               ),
                               title: Text(ex['title'] ?? ex['question'] ?? 'Exam Item', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
-                              subtitle: Text(isPdf ? 'PDF Question Paper' : 'MCQ Question • Correct: Option ${String.fromCharCode(65 + (ex['correct_index'] ?? 0))}', style: const TextStyle(fontSize: 11)),
+                              subtitle: Text(isPdf ? 'PDF Question Paper' : 'MCQ Question • Correct: Option ${String.fromCharCode(65 + ((ex['correct_index'] as num?)?.toInt() ?? 0))}', style: const TextStyle(fontSize: 11)),
                               trailing: IconButton(
                                 icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
                                 onPressed: () async {
