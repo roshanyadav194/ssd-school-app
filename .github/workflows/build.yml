@@ -29,7 +29,6 @@ jobs:
         run: |
           mkdir -p lib
           [ -f main.dart ] && mv main.dart lib/main.dart || true
-          # Corrected path to match your assets/icon/ folder structure
           [ -f assets/icon/app_logo.png ] && cp assets/icon/app_logo.png ./app_logo.png || true
 
       - name: Create Base Flutter Project
@@ -39,9 +38,10 @@ jobs:
           cp -rn temp_app/web ./ 2>/dev/null || true
           rm -rf temp_app
 
-      - name: Configure Android Permissions & App Name
+      - name: Configure Android Permissions, App Name & CompileSdk 34
         run: |
           python3 -c '
+          import re
           p = "android/app/src/main/AndroidManifest.xml"
           with open(p, "r") as f: c = f.read()
           c = c.replace("android:label=\"ssd_school_app\"", "android:label=\"S.S.D. Convent School\"")
@@ -56,6 +56,14 @@ jobs:
           if "android.permission.INTERNET" not in c:
               c = c.replace("</manifest>", perms)
           with open(p, "w") as f: f.write(c)
+
+          # Upgrade compileSdk and targetSdk to 34 for file_picker compatibility
+          gb = "android/app/build.gradle"
+          with open(gb, "r") as f: g = f.read()
+          g = re.sub(r"compileSdk\s+\d+", "compileSdk 34", g)
+          g = re.sub(r"targetSdkVersion\s+\d+", "targetSdkVersion 34", g)
+          g = re.sub(r"minSdkVersion\s+\d+", "minSdkVersion 21", g)
+          with open(gb, "w") as f: f.write(g)
           '
 
       - name: Install Dependencies & Generate Launcher Icon
