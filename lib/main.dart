@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -16,7 +15,7 @@ void main() {
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Color(0xFF040C1A),
+      systemNavigationBarColor: Color(0xFF030914),
       systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
@@ -32,92 +31,76 @@ class SSDConventApp extends StatefulWidget {
 }
 
 class _SSDConventAppState extends State<SSDConventApp> {
-  bool _isDarkMode = true;
-
-  void _toggleTheme() {
-    setState(() {
-      _isDarkMode = !_isDarkMode;
-    });
-  }
+  bool _isDark = true;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'S.S.D. Convent School',
       debugShowCheckedModeBanner: false,
-      themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: const Color(0xFFF1F5F9),
-        primaryColor: const Color(0xFF1D4ED8),
-        fontFamily: 'Roboto',
-        useMaterial3: true,
-      ),
-      darkTheme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF040D1A),
-        primaryColor: const Color(0xFF2563EB),
-        fontFamily: 'Roboto',
-        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFF040A17),
+        fontFamily: 'sans-serif',
       ),
-      home: HomeScreen(
-        isDarkMode: _isDarkMode,
-        onToggleTheme: _toggleTheme,
+      home: SchoolPortalHomeScreen(
+        isDark: _isDark,
+        onToggleTheme: () => setState(() => _isDark = !_isDark),
       ),
     );
   }
 }
 
-class HomeScreen extends StatefulWidget {
-  final bool isDarkMode;
+class SchoolPortalHomeScreen extends StatefulWidget {
+  final bool isDark;
   final VoidCallback onToggleTheme;
 
-  const HomeScreen({
+  const SchoolPortalHomeScreen({
     super.key,
-    required this.isDarkMode,
+    required this.isDark,
     required this.onToggleTheme,
   });
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<SchoolPortalHomeScreen> createState() => _SchoolPortalHomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  int _activeHeroIndex = 0;
+class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
+  int _heroIndex = 0;
   final PageController _pageController = PageController();
-  Timer? _timer;
+  Timer? _sliderTimer;
 
-  final List<Map<String, String>> _heroBanners = [
+  final List<Map<String, String>> _slides = [
     {
-      'tag': 'LEARN • GROW • ACHIEVE',
+      'tag': 'LEARN  •  GROW  •  ACHIEVE',
       'title': 'A brighter future\nstarts here.',
       'desc':
-          'Champapur, Janghai, Prayagraj — A modern space where students learn with confidence, curiosity, and care.',
+          'Champapur, Janghai, Prayagraj —\nA modern space where students learn\nwith confidence, curiosity, and care.',
     },
     {
-      'tag': 'SMART DIGITAL CAMPUS',
+      'tag': 'SMART CAMPUS  •  VALUES',
       'title': 'Empowering Minds,\nShaping Future.',
       'desc':
-          'Holistic academic excellence, state-of-the-art computer labs, science innovation, and rich moral discipline.',
+          'Fostering intellectual excellence,\ninnovation, modern laboratories,\nand deeply rooted moral leadership.',
     },
     {
-      'tag': 'LEADERSHIP & VALUES',
-      'title': 'Excellence in every\nendeavor.',
+      'tag': 'EXCELLENCE  •  INTEGRITY',
+      'title': 'Nurturing Leaders\nof Tomorrow.',
       'desc':
-          'Nurturing students to become confident, compassionate, and visionary leaders in academics and life.',
+          'Dedicated faculty guiding students\nto shine in academics, sports, arts,\nand national competitive careers.',
     },
   ];
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _sliderTimer = Timer.periodic(const Duration(seconds: 4), (t) {
       if (_pageController.hasClients) {
-        int next = (_activeHeroIndex + 1) % _heroBanners.length;
+        int next = (_heroIndex + 1) % _slides.length;
         _pageController.animateToPage(
           next,
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.easeInOutCubic,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
         );
       }
     });
@@ -125,94 +108,91 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _sliderTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
 
-  Future<void> _launchExternal(String url) async {
-    final uri = Uri.parse(url);
+  Future<void> _openUrl(String link) async {
+    final uri = Uri.parse(link);
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {}
   }
 
-  void _showVisitingHoursDialog() {
-    showDialog(
+  void _showVisitingDetails() {
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0A192F),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFF38BDF8), width: 0.8),
-        ),
-        title: const Row(
-          children: [
-            Icon(Icons.schedule_rounded, color: Color(0xFF38BDF8), size: 24),
-            SizedBox(width: 10),
-            Text(
-              'Campus Visiting Hours',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 17,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
+      backgroundColor: const Color(0xFF0B1930),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildDialogRow('Monday - Saturday:', '8:00 AM - 2:00 PM'),
-            const SizedBox(height: 8),
-            _buildDialogRow('Sunday & Holidays:', 'Closed'),
-            const SizedBox(height: 8),
-            _buildDialogRow('Principal Meeting:', '10:00 AM - 12:30 PM'),
-            const SizedBox(height: 14),
-            const Text(
-              'Parents and visitors are requested to collect a visitor entry pass from the main reception desk.',
-              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0369A1).withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.schedule_rounded,
+                      color: Color(0xFF38BDF8), size: 24),
+                ),
+                const SizedBox(width: 14),
+                const Text(
+                  'Campus Visiting Hours',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _infoRow('Monday – Saturday', '8:00 AM – 2:00 PM'),
+            const Divider(color: Colors.white12, height: 20),
+            _infoRow('Principal Meeting', '10:00 AM – 12:30 PM'),
+            const Divider(color: Colors.white12, height: 20),
+            _infoRow('Sunday & Public Holidays', 'Closed'),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF38BDF8),
+                  foregroundColor: const Color(0xFF040A17),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Close',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
             ),
           ],
         ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Understood'),
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildDialogRow(String label, String value) {
+  Widget _infoRow(String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFFCBD5E1),
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Color(0xFF38BDF8),
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-          ),
-        ),
+        Text(label,
+            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13.5)),
+        Text(value,
+            style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 13.5)),
       ],
     );
   }
@@ -220,24 +200,24 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF040D1A),
+      backgroundColor: const Color(0xFF040A17),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ================= TOP HEADER =================
-              _buildTopHeader(),
+              // ================= TOP BAR =================
+              _buildTopBar(),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 8),
 
-              // ================= HERO BANNER =================
-              _buildHeroBanner(),
+              // ================= HERO BANNER SLIDESHOW =================
+              _buildHeroSlideCard(),
 
               const SizedBox(height: 22),
 
-              // ================= SECTION TITLE =================
+              // ================= SECTION HEADER =================
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 child: Column(
@@ -246,11 +226,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(
                       children: [
                         Container(
-                          width: 4,
+                          width: 3.5,
                           height: 18,
                           decoration: BoxDecoration(
                             color: const Color(0xFF38BDF8),
-                            borderRadius: BorderRadius.circular(2),
+                            borderRadius: BorderRadius.circular(4),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -260,20 +240,19 @@ class _HomeScreenState extends State<HomeScreen> {
                             fontSize: 17,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
-                            letterSpacing: 0.3,
+                            letterSpacing: 0.2,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
                     const Padding(
-                      padding: EdgeInsets.only(left: 12),
+                      padding: EdgeInsets.only(left: 11),
                       child: Text(
                         'Quick access to important contacts and campus information.',
                         style: TextStyle(
                           fontSize: 12,
                           color: Color(0xFF94A3B8),
-                          fontWeight: FontWeight.w400,
                         ),
                       ),
                     ),
@@ -281,41 +260,51 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
-              // ================= 4 DIRECTORY CARDS (2x2 GRID) =================
+              // ================= 4 VIBRANT COLORFUL CARDS (2x2) =================
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Column(
                   children: [
-                    // ROW 1: Phone Helpline & Campus Location
+                    // ROW 1: EMERALD GREEN (Phone) + CRIMSON RED (Exact Maps Location)
                     Row(
                       children: [
                         Expanded(
-                          child: _buildDirectoryCard(
+                          child: _buildVibrantCard(
+                            cardBgStart: const Color(0xFF04211A),
+                            cardBgEnd: const Color(0xFF031411),
+                            borderColor: const Color(0xFF059669),
                             glowColor: const Color(0xFF10B981),
                             icon: Icons.phone_in_talk_rounded,
                             iconBg: const Color(0xFF064E3B),
                             title: 'Phone Helpline',
-                            details: '+91 78808 84750\n+91 85608 22342',
-                            buttonText: 'Call Now',
-                            buttonIcon: Icons.call_rounded,
-                            onTap: () => _launchExternal('tel:+917880884750'),
+                            line1: '+91 78808 84750',
+                            line2: '+91 85608 22342',
+                            btnLabel: 'Call Now',
+                            btnIcon: Icons.call_rounded,
+                            btnBg: const Color(0xFF064E3B),
+                            btnTextColor: const Color(0xFF34D399),
+                            onTap: () => _openUrl('tel:+917880884750'),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _buildDirectoryCard(
-                            glowColor: const Color(0xFFF43F5E),
+                          child: _buildVibrantCard(
+                            cardBgStart: const Color(0xFF240A14),
+                            cardBgEnd: const Color(0xFF14050B),
+                            borderColor: const Color(0xFFBE123C),
+                            glowColor: const Color(0xFFFB7185),
                             icon: Icons.location_on_rounded,
                             iconBg: const Color(0xFF881337),
                             title: 'Campus Location',
-                            details:
-                                'Champapur, Handia Rd,\nJanghai, Prayagraj',
-                            buttonText: 'Open in Maps',
-                            buttonIcon: Icons.map_rounded,
-                            onTap: () => _launchExternal(
-                                'https://maps.google.com/?q=Champapur+Janghai+Prayagraj'),
+                            line1: 'Champapur, Handia Rd,',
+                            line2: 'Janghai, Prayagraj',
+                            btnLabel: 'Open in Maps',
+                            btnIcon: Icons.map_rounded,
+                            btnBg: const Color(0xFF881337),
+                            btnTextColor: const Color(0xFFFDA4AF),
+                            onTap: () => _openUrl('https://maps.app.goo.gl/nY78gwbSR8aiYyJFA?g_st=ac'),
                           ),
                         ),
                       ],
@@ -323,35 +312,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     const SizedBox(height: 12),
 
-                    // ROW 2: Visiting Hours & Official Email
+                    // ROW 2: OCEAN BLUE (Visiting Hours) + ROYAL PURPLE (Updated Official Email)
                     Row(
                       children: [
                         Expanded(
-                          child: _buildDirectoryCard(
+                          child: _buildVibrantCard(
+                            cardBgStart: const Color(0xFF061E38),
+                            cardBgEnd: const Color(0xFF041021),
+                            borderColor: const Color(0xFF0284C7),
                             glowColor: const Color(0xFF38BDF8),
-                            icon: Icons.schedule_rounded,
+                            icon: Icons.access_time_filled_rounded,
                             iconBg: const Color(0xFF0C4A6E),
                             title: 'Visiting Hours',
-                            details:
-                                'Mon - Sat:\n8:00 AM - 2:00 PM\n(Closed Sundays)',
-                            buttonText: 'View Details',
-                            buttonIcon: Icons.calendar_today_rounded,
-                            onTap: _showVisitingHoursDialog,
+                            line1: 'Mon – Sat:',
+                            line2: '8:00 AM – 2:00 PM\n(Closed Sundays)',
+                            btnLabel: 'View Details',
+                            btnIcon: Icons.calendar_month_rounded,
+                            btnBg: const Color(0xFF0C4A6E),
+                            btnTextColor: const Color(0xFF7DD3FC),
+                            onTap: _showVisitingDetails,
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _buildDirectoryCard(
-                            glowColor: const Color(0xFFA855F7),
-                            icon: Icons.email_rounded,
+                          child: _buildVibrantCard(
+                            cardBgStart: const Color(0xFF1E0E38),
+                            cardBgEnd: const Color(0xFF0F061F),
+                            borderColor: const Color(0xFF7C3AED),
+                            glowColor: const Color(0xFFC084FC),
+                            icon: Icons.mail_rounded,
                             iconBg: const Color(0xFF581C87),
                             title: 'Official Email',
-                            details:
-                                'info@ssdconvent.com\nPrincipal & Admin Desk',
-                            buttonText: 'Send Email',
-                            buttonIcon: Icons.send_rounded,
-                            onTap: () => _launchExternal(
-                                'mailto:info@ssdconvent.com?subject=Inquiry regarding S.S.D. Convent School'),
+                            line1: 'ssdconventschool194',
+                            line2: '@gmail.com',
+                            btnLabel: 'Send Email',
+                            btnIcon: Icons.send_rounded,
+                            btnBg: const Color(0xFF581C87),
+                            btnTextColor: const Color(0xFFD8B4FE),
+                            onTap: () => _openUrl(
+                                'mailto:ssdconventschool194@gmail.com?subject=Inquiry regarding S.S.D. Convent School'),
                           ),
                         ),
                       ],
@@ -362,27 +361,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 16),
 
-              // ================= TWO BOTTOM PILL BUTTONS =================
+              // ================= DUAL PILL BUTTONS =================
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Row(
                   children: [
                     Expanded(
-                      child: _buildBottomPillButton(
+                      child: _buildPillBar(
                         icon: Icons.phone_rounded,
                         label: 'Call School Office',
-                        accentColor: const Color(0xFF38BDF8),
-                        onTap: () => _launchExternal('tel:+917880884750'),
+                        accent: const Color(0xFF38BDF8),
+                        onTap: () => _openUrl('tel:+917880884750'),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildBottomPillButton(
+                      child: _buildPillBar(
                         icon: Icons.chat_rounded,
                         label: 'WhatsApp Chat',
-                        accentColor: const Color(0xFF10B981),
-                        onTap: () =>
-                            _launchExternal('https://wa.me/917880884750'),
+                        accent: const Color(0xFF10B981),
+                        onTap: () => _openUrl('https://wa.me/917880884750'),
                       ),
                     ),
                   ],
@@ -391,9 +389,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 16),
 
-              // ================= LOGIN TO FAMILY PORTAL BUTTON =================
+              // ================= BIG GLOWING LOGIN BUTTON =================
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Container(
                   width: double.infinity,
                   height: 54,
@@ -403,7 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       colors: [
                         Color(0xFF2563EB),
                         Color(0xFF1D4ED8),
-                        Color(0xFF38BDF8)
+                        Color(0xFF0EA5E9),
                       ],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
@@ -411,8 +409,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     boxShadow: const [
                       BoxShadow(
                         color: Color(0x662563EB),
-                        blurRadius: 18,
-                        offset: Offset(0, 6),
+                        blurRadius: 20,
+                        offset: Offset(0, 8),
                       ),
                     ],
                   ),
@@ -428,14 +426,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const LoginPortalScreen(),
+                          builder: (context) => const NativeLoginScreen(),
                         ),
                       );
                     },
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.login_rounded, color: Colors.white, size: 20),
+                        Icon(Icons.login_rounded,
+                            color: Colors.white, size: 20),
                         SizedBox(width: 10),
                         Text(
                           'Login to Family Portal',
@@ -443,7 +442,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: Colors.white,
                             fontSize: 15.5,
                             fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
+                            letterSpacing: 0.4,
                           ),
                         ),
                         SizedBox(width: 8),
@@ -463,38 +462,35 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ================= TOP APP BAR =================
-  Widget _buildTopHeader() {
+  // ================= TOP HEADER BAR =================
+  Widget _buildTopBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          // Circular School Emblem
           Container(
-            width: 46,
-            height: 46,
-            padding: const EdgeInsets.all(2),
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFD6AD55), width: 1.5),
+              border: Border.all(color: const Color(0xFFEAB308), width: 1.8),
               gradient: const LinearGradient(
                 colors: [Color(0xFF1E3A8A), Color(0xFF0F172A)],
               ),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x40D6AD55),
-                  blurRadius: 8,
+                  color: Color(0x66EAB308),
+                  blurRadius: 10,
                 ),
               ],
             ),
             child: const Icon(
               Icons.school_rounded,
-              color: Color(0xFFD6AD55),
+              color: Color(0xFFFACC15),
               size: 26,
             ),
           ),
           const SizedBox(width: 12),
-          // Title + Subtitle
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -502,7 +498,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   'S.S.D. Convent School',
                   style: TextStyle(
-                    fontSize: 17,
+                    fontSize: 16.5,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
                     letterSpacing: 0.2,
@@ -512,56 +508,49 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   'Family Information Portal',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11.5,
                     color: Color(0xFF94A3B8),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 SizedBox(height: 2),
                 Text(
-                  'LEARN  •  GROW  •  ACHIEVE',
+                  'LEARN   •   GROW   •   ACHIEVE',
                   style: TextStyle(
                     fontSize: 9.5,
-                    color: Color(0xFFD6AD55),
-                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFFACC15),
+                    fontWeight: FontWeight.w800,
                     letterSpacing: 1.2,
                   ),
                 ),
               ],
             ),
           ),
-          // Theme Toggle Switch
-          GestureDetector(
-            onTap: widget.onToggleTheme,
-            child: Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F223D),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white12),
-              ),
-              child: Icon(
-                widget.isDarkMode
-                    ? Icons.wb_sunny_rounded
-                    : Icons.nightlight_round,
-                color: const Color(0xFFFDE68A),
-                size: 19,
-              ),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F2342),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: const Icon(
+              Icons.wb_sunny_rounded,
+              color: Color(0xFFFDE68A),
+              size: 18,
             ),
           ),
           const SizedBox(width: 8),
-          // Menu Icon
           Container(
-            padding: const EdgeInsets.all(7),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFF0F223D),
+              color: const Color(0xFF0F2342),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.white12),
             ),
             child: const Icon(
               Icons.menu_rounded,
               color: Colors.white,
-              size: 19,
+              size: 18,
             ),
           ),
         ],
@@ -570,23 +559,23 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ================= HERO BANNER CARD =================
-  Widget _buildHeroBanner() {
+  Widget _buildHeroSlideCard() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      height: 220,
+      margin: const EdgeInsets.symmetric(horizontal: 14),
+      height: 215,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
         gradient: const LinearGradient(
-          colors: [Color(0xFF0A2246), Color(0xFF06152C)],
+          colors: [Color(0xFF07214A), Color(0xFF04142E)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        border: Border.all(color: const Color(0x3338BDF8), width: 1.2),
+        border: Border.all(color: const Color(0xFF1E40AF), width: 1.2),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x400A2246),
-            blurRadius: 16,
-            offset: Offset(0, 8),
+            color: Color(0x5507214A),
+            blurRadius: 18,
+            offset: Offset(0, 6),
           ),
         ],
       ),
@@ -594,15 +583,14 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           PageView.builder(
             controller: _pageController,
-            onPageChanged: (i) => setState(() => _activeHeroIndex = i),
-            itemCount: _heroBanners.length,
+            onPageChanged: (i) => setState(() => _heroIndex = i),
+            itemCount: _slides.length,
             itemBuilder: (context, i) {
-              final item = _heroBanners[i];
+              final slide = _slides[i];
               return Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    // Text Column
                     Expanded(
                       flex: 6,
                       child: Column(
@@ -611,7 +599,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 9, vertical: 4),
+                                horizontal: 8, vertical: 3.5),
                             decoration: BoxDecoration(
                               color: const Color(0x26FDE68A),
                               borderRadius: BorderRadius.circular(6),
@@ -620,37 +608,37 @@ class _HomeScreenState extends State<HomeScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 const Icon(Icons.school_outlined,
-                                    size: 12, color: Color(0xFFFDE68A)),
+                                    size: 11, color: Color(0xFFFDE68A)),
                                 const SizedBox(width: 5),
                                 Text(
-                                  item['tag']!,
+                                  slide['tag']!,
                                   style: const TextStyle(
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.bold,
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.w800,
                                     color: Color(0xFFFDE68A),
-                                    letterSpacing: 0.8,
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 10),
-                          Text(
-                            item['title']!,
-                            style: const TextStyle(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              height: 1.2,
-                            ),
-                          ),
                           const SizedBox(height: 8),
                           Text(
-                            item['desc']!,
+                            slide['title']!,
                             style: const TextStyle(
-                              fontSize: 11,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              height: 1.15,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            slide['desc']!,
+                            style: const TextStyle(
+                              fontSize: 10.5,
                               color: Color(0xFFCBD5E1),
-                              height: 1.35,
+                              height: 1.3,
                             ),
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
@@ -659,15 +647,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    // Campus Image Container
                     Expanded(
                       flex: 4,
                       child: Container(
-                        height: 150,
+                        height: 145,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                              color: const Color(0x4038BDF8), width: 1.5),
+                              color: const Color(0xFF38BDF8).withOpacity(0.4),
+                              width: 1.5),
                           gradient: const LinearGradient(
                             colors: [Color(0xFF1E3A8A), Color(0xFF0F172A)],
                           ),
@@ -678,28 +666,28 @@ class _HomeScreenState extends State<HomeScreen> {
                             alignment: Alignment.center,
                             children: [
                               Container(
-                                color: const Color(0xFF0B1E38),
+                                color: const Color(0xFF0A1E3B),
                                 child: const Center(
                                   child: Icon(
-                                    Icons.apartment_rounded,
-                                    size: 56,
+                                    Icons.account_balance_rounded,
+                                    size: 54,
                                     color: Color(0xFF38BDF8),
                                   ),
                                 ),
                               ),
                               Positioned(
-                                bottom: 8,
+                                bottom: 6,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.6),
+                                    color: Colors.black.withOpacity(0.65),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: const Text(
-                                    'SSD CAMPUS',
+                                    'S.S.D. CAMPUS',
                                     style: TextStyle(
-                                      fontSize: 9,
+                                      fontSize: 8.5,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.white,
                                       letterSpacing: 0.8,
@@ -717,20 +705,19 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
-          // Pagination Indicator Dots
           Positioned(
-            bottom: 12,
-            left: 20,
+            bottom: 10,
+            left: 18,
             child: Row(
               children: List.generate(
-                _heroBanners.length,
+                _slides.length,
                 (i) => AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
-                  margin: const EdgeInsets.only(right: 5),
-                  width: _activeHeroIndex == i ? 18 : 6,
-                  height: 5,
+                  margin: const EdgeInsets.only(right: 4),
+                  width: _heroIndex == i ? 16 : 5,
+                  height: 4.5,
                   decoration: BoxDecoration(
-                    color: _activeHeroIndex == i
+                    color: _heroIndex == i
                         ? const Color(0xFF38BDF8)
                         : Colors.white24,
                     borderRadius: BorderRadius.circular(4),
@@ -744,26 +731,36 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ================= 2x2 DIRECTORY CARDS =================
-  Widget _buildDirectoryCard({
+  // ================= 4 VIBRANT DIRECTORY CARDS =================
+  Widget _buildVibrantCard({
+    required Color cardBgStart,
+    required Color cardBgEnd,
+    required Color borderColor,
     required Color glowColor,
     required IconData icon,
     required Color iconBg,
     required String title,
-    required String details,
-    required String buttonText,
-    required IconData buttonIcon,
+    required String line1,
+    required String line2,
+    required String btnLabel,
+    required IconData btnIcon,
+    required Color btnBg,
+    required Color btnTextColor,
     required VoidCallback onTap,
   }) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: const Color(0xFF0A182E),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: glowColor.withOpacity(0.35), width: 1.2),
+        gradient: LinearGradient(
+          colors: [cardBgStart, cardBgEnd],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: borderColor.withOpacity(0.6), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: glowColor.withOpacity(0.12),
+            color: glowColor.withOpacity(0.18),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -773,7 +770,6 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 width: 38,
@@ -781,6 +777,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(
                   color: iconBg,
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: borderColor.withOpacity(0.4), width: 0.8),
                 ),
                 child: Icon(icon, color: glowColor, size: 20),
               ),
@@ -789,7 +787,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 13,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
                   ),
@@ -799,11 +797,19 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            details,
+            line1,
             style: const TextStyle(
               fontSize: 11,
-              color: Color(0xFFCBD5E1),
-              height: 1.35,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFFE2E8F0),
+            ),
+          ),
+          Text(
+            line2,
+            style: const TextStyle(
+              fontSize: 10.5,
+              color: Color(0xFF94A3B8),
+              height: 1.3,
             ),
           ),
           const SizedBox(height: 14),
@@ -813,28 +819,29 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: glowColor.withOpacity(0.18),
+                color: btnBg,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: glowColor.withOpacity(0.35)),
+                border: Border.all(color: borderColor.withOpacity(0.4)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
-                      Icon(buttonIcon, size: 12, color: glowColor),
+                      Icon(btnIcon, size: 12, color: btnTextColor),
                       const SizedBox(width: 5),
                       Text(
-                        buttonText,
+                        btnLabel,
                         style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.bold,
-                          color: glowColor,
+                          color: btnTextColor,
                         ),
                       ),
                     ],
                   ),
-                  Icon(Icons.arrow_forward_rounded, size: 13, color: glowColor),
+                  Icon(Icons.arrow_forward_rounded,
+                      size: 13, color: btnTextColor),
                 ],
               ),
             ),
@@ -844,11 +851,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ================= BOTTOM PILL BUTTONS =================
-  Widget _buildBottomPillButton({
+  // ================= DUAL PILL BUTTON WIDGET =================
+  Widget _buildPillBar({
     required IconData icon,
     required String label,
-    required Color accentColor,
+    required Color accent,
     required VoidCallback onTap,
   }) {
     return InkWell(
@@ -857,7 +864,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF091629),
+          color: const Color(0xFF071426),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: Colors.white12),
         ),
@@ -866,7 +873,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Row(
               children: [
-                Icon(icon, size: 16, color: accentColor),
+                Icon(icon, size: 16, color: accent),
                 const SizedBox(width: 8),
                 Text(
                   label,
@@ -887,139 +894,112 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ================= LOGIN TO FAMILY PORTAL SCREEN =================
-class LoginPortalScreen extends StatefulWidget {
-  const LoginPortalScreen({super.key});
+// ================= NATIVE LOGIN SCREEN =================
+class NativeLoginScreen extends StatefulWidget {
+  const NativeLoginScreen({super.key});
 
   @override
-  State<LoginPortalScreen> createState() => _LoginPortalScreenState();
+  State<NativeLoginScreen> createState() => _NativeLoginScreenState();
 }
 
-class _LoginPortalScreenState extends State<LoginPortalScreen> {
-  int _selectedTab = 0; // 0: Student / Parent, 1: Teacher / Staff
-  bool _obscurePassword = true;
-  final TextEditingController _idController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+class _NativeLoginScreenState extends State<NativeLoginScreen> {
+  int _activeTab = 0;
+  bool _obscure = true;
+  final TextEditingController _id = TextEditingController();
+  final TextEditingController _pass = TextEditingController();
 
   @override
   void dispose() {
-    _idController.dispose();
-    _passwordController.dispose();
+    _id.dispose();
+    _pass.dispose();
     super.dispose();
-  }
-
-  void _handleLogin() {
-    final id = _idController.text.trim();
-    final pass = _passwordController.text.trim();
-
-    if (id.isEmpty || pass.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter your Registered ID / Mobile and Password.'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Verifying $_idController with Family Portal...'),
-        backgroundColor: const Color(0xFF2563EB),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF040D1A),
+      backgroundColor: const Color(0xFF040A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF040D1A),
+        backgroundColor: const Color(0xFF040A17),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Colors.white, size: 20),
+              color: Colors.white, size: 18),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Family Portal Login',
           style: TextStyle(
-              fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white),
+              fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
         ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Center(
                 child: Container(
-                  width: 72,
-                  height: 72,
+                  width: 68,
+                  height: 68,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFD6AD55), width: 2),
+                    border: Border.all(color: const Color(0xFFFACC15), width: 1.8),
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF1E3A8A), Color(0xFF06152C)],
+                      colors: [Color(0xFF1E3A8A), Color(0xFF071426)],
                     ),
                   ),
-                  child: const Icon(Icons.lock_person_rounded,
-                      color: Color(0xFFD6AD55), size: 36),
+                  child: const Icon(Icons.lock_rounded,
+                      color: Color(0xFFFACC15), size: 32),
                 ),
               ),
               const SizedBox(height: 16),
               const Center(
                 child: Text(
-                  'Welcome to S.S.D. Family Portal',
+                  'Welcome to S.S.D. Portal',
                   style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                  ),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white),
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               const Center(
                 child: Text(
-                  'Access attendance, report cards, fee receipts & notices',
-                  style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
-                  textAlign: TextAlign.center,
+                  'Sign in to access student grades, fees & records',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                 ),
               ),
-
-              const SizedBox(height: 28),
-
-              // Segmented Tab (Parent/Student vs Staff)
+              const SizedBox(height: 24),
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0B1E38),
-                  borderRadius: BorderRadius.circular(14),
+                  color: const Color(0xFF09162A),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.white12),
                 ),
                 child: Row(
                   children: [
                     Expanded(
                       child: GestureDetector(
-                        onTap: () => setState(() => _selectedTab = 0),
+                        onTap: () => setState(() => _activeTab = 0),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: const EdgeInsets.symmetric(vertical: 9),
                           decoration: BoxDecoration(
-                            color: _selectedTab == 0
+                            color: _activeTab == 0
                                 ? const Color(0xFF2563EB)
                                 : Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(9),
                           ),
                           alignment: Alignment.center,
                           child: Text(
                             'Student / Parent',
                             style: TextStyle(
-                              fontSize: 12.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: _selectedTab == 0
+                              color: _activeTab == 0
                                   ? Colors.white
                                   : Colors.white60,
                             ),
@@ -1029,22 +1009,22 @@ class _LoginPortalScreenState extends State<LoginPortalScreen> {
                     ),
                     Expanded(
                       child: GestureDetector(
-                        onTap: () => setState(() => _selectedTab = 1),
+                        onTap: () => setState(() => _activeTab = 1),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: const EdgeInsets.symmetric(vertical: 9),
                           decoration: BoxDecoration(
-                            color: _selectedTab == 1
+                            color: _activeTab == 1
                                 ? const Color(0xFF2563EB)
                                 : Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(9),
                           ),
                           alignment: Alignment.center,
                           child: Text(
                             'Teacher / Staff',
                             style: TextStyle(
-                              fontSize: 12.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: _selectedTab == 1
+                              color: _activeTab == 1
                                   ? Colors.white
                                   : Colors.white60,
                             ),
@@ -1055,31 +1035,26 @@ class _LoginPortalScreenState extends State<LoginPortalScreen> {
                   ],
                 ),
               ),
-
-              const SizedBox(height: 24),
-
-              // User ID / Admission Number
-              const Text(
-                'Admission No. / Registered Mobile',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFCBD5E1),
-                ),
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 22),
+              const Text('Registered ID / Mobile Number',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFCBD5E1))),
+              const SizedBox(height: 6),
               TextField(
-                controller: _idController,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
+                controller: _id,
+                style: const TextStyle(color: Colors.white, fontSize: 13.5),
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: const Color(0xFF0B1E38),
-                  hintText: 'e.g., SSD2026/0412 or 9876543210',
-                  hintStyle: const TextStyle(color: Colors.white30, fontSize: 13),
+                  fillColor: const Color(0xFF071426),
+                  hintText: 'e.g. SSD2026/0412 or 9876543210',
+                  hintStyle:
+                      const TextStyle(color: Colors.white24, fontSize: 12.5),
                   prefixIcon: const Icon(Icons.person_rounded,
-                      color: Color(0xFF38BDF8), size: 20),
+                      color: Color(0xFF38BDF8), size: 18),
                   contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Colors.white12),
@@ -1094,43 +1069,37 @@ class _LoginPortalScreenState extends State<LoginPortalScreen> {
                   ),
                 ),
               ),
-
-              const SizedBox(height: 18),
-
-              // Password / PIN
-              const Text(
-                'Password / Security PIN',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFCBD5E1),
-                ),
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
+              const Text('Password',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFCBD5E1))),
+              const SizedBox(height: 6),
               TextField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
+                controller: _pass,
+                obscureText: _obscure,
+                style: const TextStyle(color: Colors.white, fontSize: 13.5),
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: const Color(0xFF0B1E38),
+                  fillColor: const Color(0xFF071426),
                   hintText: 'Enter your password',
-                  hintStyle: const TextStyle(color: Colors.white30, fontSize: 13),
-                  prefixIcon: const Icon(Icons.lock_outline_rounded,
-                      color: Color(0xFF38BDF8), size: 20),
+                  hintStyle:
+                      const TextStyle(color: Colors.white24, fontSize: 12.5),
+                  prefixIcon: const Icon(Icons.lock_rounded,
+                      color: Color(0xFF38BDF8), size: 18),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword
+                      _obscure
                           ? Icons.visibility_off_rounded
                           : Icons.visibility_rounded,
                       color: Colors.white38,
-                      size: 20,
+                      size: 18,
                     ),
-                    onPressed: () => setState(
-                        () => _obscurePassword = !_obscurePassword),
+                    onPressed: () => setState(() => _obscure = !_obscure),
                   ),
                   contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Colors.white12),
@@ -1145,74 +1114,37 @@ class _LoginPortalScreenState extends State<LoginPortalScreen> {
                   ),
                 ),
               ),
-
-              const SizedBox(height: 12),
-
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                            'Please contact school administration desk to reset credentials.'),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    'Forgot Password?',
-                    style: TextStyle(
-                      color: Color(0xFF38BDF8),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Sign In Button
+              const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 48,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2563EB),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: _handleLogin,
-                  child: const Text(
-                    'Sign In to Portal',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Help contact
-              Center(
-                child: TextButton.icon(
-                  onPressed: () async {
-                    final uri = Uri.parse('tel:+917880884750');
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri);
+                  onPressed: () {
+                    if (_id.text.isEmpty || _pass.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please enter ID and password'),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
+                      return;
                     }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Verifying credentials...'),
+                        backgroundColor: Color(0xFF2563EB),
+                      ),
+                    );
                   },
-                  icon: const Icon(Icons.help_outline_rounded,
-                      size: 16, color: Color(0xFFD6AD55)),
-                  label: const Text(
-                    'Need Help? Call School Helpline',
-                    style: TextStyle(
-                      color: Color(0xFFD6AD55),
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: const Text('Sign In',
+                      style:
+                          TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
