@@ -5,6 +5,10 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// Your actual app screens
+import 'screens/admin_hub_screen.dart';
+import 'screens/dashboard_screen.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -12,7 +16,7 @@ void main() async {
   try {
     await Supabase.initialize(
       url: 'https://shlzyjkkckmdxolwenvk.supabase.co',
-      anonKey: 'sb_publishable_6yYdqREcVbFa_65ARl1EWA_rGjENe1n', // <-- PASTE YOUR REAL ANON KEY HERE
+      anonKey: 'sb_publishable_6yYdqREcVbFa_65ARl1EWA_rGjENe1n', // <-- Paste your real eyJ anon key here before committing!
     );
   } catch (_) {}
 
@@ -1287,7 +1291,8 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
         }
 
         if (mounted) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ParentDashboardPlaceholder()));
+          // Routes to your actual dashboard_screen.dart
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const DashboardScreen()));
         }
 
       } else {
@@ -1313,7 +1318,8 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
           }
 
           if (mounted) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminDashboardPlaceholder()));
+            // Routes to your actual admin_hub_screen.dart
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminHubScreen()));
           }
         }
       }
@@ -1452,7 +1458,7 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
                           ),
                           alignment: Alignment.center,
                           child: Text(
-                            'Admin', // CHANGED FROM TEACHER / STAFF
+                            'Admin',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
@@ -1736,57 +1742,3 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
     );
   }
 }
-
-class AdminDashboardPlaceholder extends StatelessWidget {
-  const AdminDashboardPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Admin Dashboard')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.admin_panel_settings, size: 64, color: Color(0xFF2563EB)),
-            const SizedBox(height: 16),
-            const Text('Welcome, Admin!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const SchoolPortalHomeScreen(isDark: true, onToggleTheme: _emptyToggle))),
-              child: const Text('Log Out'),
-            )
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class ParentDashboardPlaceholder extends StatelessWidget {
-  const ParentDashboardPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Parent/Student Dashboard')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.family_restroom, size: 64, color: Color(0xFF10B981)),
-            const SizedBox(height: 16),
-            const Text('Welcome, Family!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const SchoolPortalHomeScreen(isDark: true, onToggleTheme: _emptyToggle))),
-              child: const Text('Log Out'),
-            )
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-void _emptyToggle() {}
