@@ -23,6 +23,7 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
   final TextEditingController _feeSearchCtrl = TextEditingController();
   String _selectedClassFilter = 'ALL';
   String _attendanceClassFilter = 'ALL';
+  String _feeClassFilter = 'ALL';
   String _studentQuery = '';
   String _feeQuery = '';
 
@@ -1240,18 +1241,61 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
                 Container(
                   color: cardBg,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  child: TextField(
-                    controller: _feeSearchCtrl,
-                    onChanged: (v) => setState(() => _feeQuery = v.trim().toLowerCase()),
-                    decoration: InputDecoration(
-                      hintText: 'Search fee by student name or roll...',
-                      hintStyle: const TextStyle(fontSize: 12),
-                      prefixIcon: const Icon(Icons.search_rounded, size: 18),
-                      contentPadding: EdgeInsets.zero,
-                      filled: true,
-                      fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                    ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 40,
+                          child: TextField(
+                            controller: _feeSearchCtrl,
+                            onChanged: (v) => setState(() => _feeQuery = v.trim().toLowerCase()),
+                            decoration: InputDecoration(
+                              hintText: 'Search fee by name, roll, phone...',
+                              hintStyle: const TextStyle(fontSize: 12),
+                              prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                              contentPadding: EdgeInsets.zero,
+                              filled: true,
+                              fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        height: 40,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _feeClassFilter,
+                            dropdownColor: cardBg,
+                            items: schoolClasses
+                                .map((c) => DropdownMenuItem(
+                                      value: c,
+                                      child: Text(
+                                        c,
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDark ? Colors.white : const Color(0xFF0F1E36),
+                                        ),
+                                      ),
+                                    ))
+                                .toList(),
+                            onChanged: (v) {
+                              if (v != null) setState(() => _feeClassFilter = v);
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Expanded(
@@ -1263,8 +1307,31 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
                       if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                       var list = snapshot.data!;
 
+                      // Search filter (Name, Phone, Roll)
                       if (_feeQuery.isNotEmpty) {
-                        list = list.where((s) => (s['student_name'] ?? '').toString().toLowerCase().contains(_feeQuery)).toList();
+                        list = list.where((s) {
+                          final name = (s['student_name'] ?? '').toString().toLowerCase();
+                          final phone = (s['parent_phone'] ?? s['mobile_number'] ?? '').toString().toLowerCase();
+                          final roll = (s['roll_number'] ?? s['roll_no'] ?? '').toString().toLowerCase();
+                          return name.contains(_feeQuery) || phone.contains(_feeQuery) || roll.contains(_feeQuery);
+                        }).toList();
+                      }
+
+                      // Class filter
+                      if (_feeClassFilter != 'ALL') {
+                        list = list.where((s) {
+                          final grade = (s['class_grade'] ?? '').toString();
+                          return _matchesClass(grade, _feeClassFilter);
+                        }).toList();
+                      }
+
+                      if (list.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'No matching fee records found.',
+                            style: TextStyle(color: Color(0xFF64748B)),
+                          ),
+                        );
                       }
 
                       return ListView.builder(
@@ -1272,17 +1339,24 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
                         itemCount: list.length,
                         itemBuilder: (context, i) {
                           final s = list[i];
-                          final pending = s['pending_fees'] ?? '0';
-                          final isClear = pending == '0' || pending == 0;
+                          final pending = (s['pending_fees'] ?? '0').toString();
+                          final isClear = pending == '0' || pending == '0.00' || pending.isEmpty;
 
                           return Card(
                             margin: const EdgeInsets.only(bottom: 10),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             child: ListTile(
-                              title: Text(s['student_name'] ?? 'Student', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              title: Text(
+                                s['student_name'] ?? 'Student',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
                               subtitle: Text(
-                                'Class: ${s['class_grade'] ?? 'N/A'}\n${isClear ? 'All Dues Paid ✓' : 'Pending: ₹$pending'}',
-                                style: TextStyle(color: isClear ? const Color(0xFF10B981) : const Color(0xFFDC2626), fontWeight: FontWeight.bold, fontSize: 11.5),
+                                'Class: ${s['class_grade'] ?? 'Not Assigned'}\n${isClear ? 'All Dues Paid ✓' : 'Pending: ₹$pending'}',
+                                style: TextStyle(
+                                  color: isClear ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11.5,
+                                ),
                               ),
                               trailing: ElevatedButton(
                                 style: ElevatedButton.styleFrom(
