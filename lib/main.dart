@@ -8,12 +8,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Restore your Supabase Backend Initialization
+  // Connected directly to your live Supabase project
   try {
     await Supabase.initialize(
-      url: 'https://whqdfdhhubcvymuoyjvv.supabase.co',
-      anonKey:
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndocWRmZGh1YmN2eW11b3lqdnYiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTczODk0NjM5MSwiZXhwIjoyMDU0NTIyMzkxfQ.6r2V1yLw1l_t3N7u_R1y1v_U2j8v6w4x2y0z1a2b3c',
+      url: 'https://shlzyjkkckmdxolwenvk.supabase.co',
+      anonKey: 'Sb_publishable_6yYdqREcVbFa_65ARl1EWA_rGjENe1n',
     );
   } catch (_) {}
 
@@ -94,7 +93,6 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
   final PageController _pageController = PageController();
   Timer? _sliderTimer;
 
-  // Exam & Gallery State
   String _selectedClass = 'Class 10';
   String _selectedGalleryCategory = 'All';
 
@@ -272,7 +270,6 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // ================= SCROLLABLE CONTENT =================
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -287,7 +284,6 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
 
                     const SizedBox(height: 22),
 
-                    // Section Header
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 18),
                       child: Column(
@@ -332,7 +328,6 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
 
                     const SizedBox(height: 14),
 
-                    // Directory Cards
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       child: Column(
@@ -428,7 +423,6 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
 
                     const SizedBox(height: 16),
 
-                    // Dual Pill Buttons
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       child: Row(
@@ -460,12 +454,10 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
 
                     const SizedBox(height: 36),
 
-                    // Exam Portal Section
                     _buildExamPortalSection(textColor, subTextColor, cardBgColor),
 
                     const SizedBox(height: 36),
 
-                    // Gallery Section
                     _buildGallerySection(textColor, subTextColor, cardBgColor),
 
                     const SizedBox(height: 30),
@@ -554,7 +546,6 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
     );
   }
 
-  // ================= TOP HEADER BAR =================
   Widget _buildTopBar(Color textColor, Color subTextColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -618,7 +609,6 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
               ],
             ),
           ),
-          // Theme Toggle Button
           GestureDetector(
             onTap: widget.onToggleTheme,
             child: Container(
@@ -641,7 +631,6 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
     );
   }
 
-  // ================= HERO BANNER CARD =================
   Widget _buildHeroSlideCard() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 14),
@@ -814,7 +803,6 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
     );
   }
 
-  // ================= 4 VIBRANT DIRECTORY CARDS =================
   Widget _buildVibrantCard({
     required Color cardBgStart,
     required Color cardBgEnd,
@@ -934,7 +922,6 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
     );
   }
 
-  // ================= DUAL PILL BUTTON WIDGET =================
   Widget _buildPillBar({
     required IconData icon,
     required String label,
@@ -979,7 +966,6 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
     );
   }
 
-  // ================= EXAM PORTAL SECTION =================
   Widget _buildExamPortalSection(
       Color textColor, Color subTextColor, Color cardBgColor) {
     return Column(
@@ -1119,7 +1105,6 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
     );
   }
 
-  // ================= GALLERY SECTION =================
   Widget _buildGallerySection(
       Color textColor, Color subTextColor, Color cardBgColor) {
     final categories = [
@@ -1260,16 +1245,14 @@ class NativeLoginScreen extends StatefulWidget {
 }
 
 class _NativeLoginScreenState extends State<NativeLoginScreen> {
-  int _activeTab = 0; // 0: Student / Parent, 1: Teacher / Staff (Admin)
+  int _activeTab = 0; 
   bool _obscure = true;
-  bool _rememberMe = false; // Restore Remember me toggle
+  bool _rememberMe = false; 
   bool _isLoading = false;
 
-  // Student / Parent controllers
   final TextEditingController _parentPhoneController = TextEditingController();
   final TextEditingController _parentDobController = TextEditingController();
 
-  // Admin / Staff controllers
   final TextEditingController _adminEmailController = TextEditingController();
   final TextEditingController _adminPassController = TextEditingController();
 
@@ -1279,7 +1262,6 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
     _loadSavedCredentials();
   }
 
-  // Restore SharedPreferences logic
   Future<void> _loadSavedCredentials() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -1300,7 +1282,6 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
       final prefs = await SharedPreferences.getInstance();
 
       if (_activeTab == 0) {
-        // --- Parent / Student Logic ---
         final phone = _parentPhoneController.text.trim();
         final dob = _parentDobController.text.trim();
         
@@ -1308,7 +1289,6 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
           throw Exception('Please enter Mobile Number and Birth Year/DOB');
         }
 
-        // Save preferences if Remember me is checked
         if (_rememberMe) {
           await prefs.setString('parent_phone', phone);
           await prefs.setString('parent_dob', dob);
@@ -1317,13 +1297,11 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
           await prefs.remove('parent_dob');
         }
 
-        // Parent Logic Success Navigation
         if (mounted) {
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ParentDashboardPlaceholder()));
         }
 
       } else {
-        // --- Admin / Staff Logic ---
         final email = _adminEmailController.text.trim();
         final pass = _adminPassController.text.trim();
         
@@ -1331,14 +1309,12 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
           throw Exception('Please enter Official Email and Password');
         }
 
-        // Real Supabase Authentication
         final response = await Supabase.instance.client.auth.signInWithPassword(
           email: email,
           password: pass,
         );
 
         if (response.user != null) {
-          // Save preferences if Remember me is checked
           if (_rememberMe) {
             await prefs.setString('admin_email', email);
             await prefs.setString('admin_pass', pass);
@@ -1347,7 +1323,6 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
             await prefs.remove('admin_pass');
           }
 
-          // Admin Logic Success Navigation
           if (mounted) {
             Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminDashboardPlaceholder()));
           }
@@ -1441,7 +1416,6 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
               ),
               const SizedBox(height: 24),
 
-              // ================= SEGMENTED TAB SELECTOR =================
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
@@ -1507,7 +1481,6 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
 
               const SizedBox(height: 24),
 
-              // ================= TAB 0: PARENT / STUDENT PANEL =================
               if (_activeTab == 0) ...[
                 Text(
                   'Registered Mobile Number',
@@ -1584,7 +1557,6 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
                 ),
               ],
 
-              // ================= TAB 1: TEACHER / STAFF / ADMIN PANEL =================
               if (_activeTab == 1) ...[
                 Text(
                   'Official School Email',
@@ -1673,7 +1645,6 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
 
               const SizedBox(height: 6),
 
-              // ================= REMEMBER ME & FORGOT PASSWORD =================
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -1723,7 +1694,6 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
 
               const SizedBox(height: 12),
 
-              // ================= SIGN IN BUTTON =================
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -1777,10 +1747,6 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
     );
   }
 }
-
-// ================= PLACEHOLDER DASHBOARDS =================
-// These prevent the "file not found" crash when you successfully log in.
-// Replace them later with your actual admin/parent screens if you have them in other files.
 
 class AdminDashboardPlaceholder extends StatelessWidget {
   const AdminDashboardPlaceholder({super.key});
