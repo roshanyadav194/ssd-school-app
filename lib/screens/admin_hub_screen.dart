@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pdf/pdf.dart';
@@ -15,7 +18,8 @@ class AdminHubScreen extends StatefulWidget {
   State<AdminHubScreen> createState() => _AdminHubScreenState();
 }
 
-class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProviderStateMixin {
+class _AdminHubScreenState extends State<AdminHubScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   // Search & Filter state
@@ -31,14 +35,25 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
   static const List<String> schoolClasses = [
     'ALL',
     'Not Assigned',
-    'Nursery', 'L.K.G.', 'U.K.G.',
-    'Class 1-A', 'Class 1-B', 'Class 2-A', 'Class 2-B',
-    'Class 3-A', 'Class 3-B', 'Class 4-A', 'Class 4-B',
-    'Class 5-A', 'Class 5-B', 'Class 6-A', 'Class 6-B',
-    'Class 7-A', 'Class 7-B', 'Class 8-A', 'Class 8-B',
-    'Class 9-A', 'Class 9-B', 'Class 10-A', 'Class 10-B',
-    'Class 11 - Science', 'Class 11 - Commerce', 'Class 11 - Arts',
-    'Class 12 - Science', 'Class 12 - Commerce', 'Class 12 - Arts',
+    'Nursery',
+    'L.K.G.',
+    'U.K.G.',
+    'Class 1',
+    'Class 2',
+    'Class 3',
+    'Class 4',
+    'Class 5',
+    'Class 6',
+    'Class 7',
+    'Class 8',
+    'Class 9',
+    'Class 10',
+    'Class 11 - Science',
+    'Class 11 - Commerce',
+    'Class 11 - Arts',
+    'Class 12 - Science',
+    'Class 12 - Commerce',
+    'Class 12 - Arts',
   ];
 
   // Student Form Controllers
@@ -54,7 +69,7 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
   final _feeDueCtrl = TextEditingController();
   final _attCtrl = TextEditingController();
   final _marksCtrl = TextEditingController();
-  String _formClass = 'Class 10-A';
+  String _formClass = 'Class 10';
   bool _isSavingStudent = false;
 
   // Notice Form Controllers
@@ -69,6 +84,23 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
   final _facultySubCtrl = TextEditingController();
   final _facultyQualCtrl = TextEditingController();
 
+  // Gallery Upload State
+  String _uploadGalleryCategory = 'Hero Slideshow';
+  final _galleryTitleCtrl = TextEditingController();
+  final _galleryQuoteCtrl = TextEditingController();
+  bool _isUploadingGallery = false;
+
+  // Exam Manager State
+  String _manageExamClass = 'Class 10';
+  final _examQuestionCtrl = TextEditingController();
+  final _optACtrl = TextEditingController();
+  final _optBCtrl = TextEditingController();
+  final _optCCtrl = TextEditingController();
+  final _optDCtrl = TextEditingController();
+  final _expCtrl = TextEditingController();
+  int _correctOptIndex = 0;
+  bool _isSavingExam = false;
+
   SupabaseClient? get _supabaseClient {
     try {
       return Supabase.instance.client;
@@ -80,7 +112,7 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 7, vsync: this);
+    _tabController = TabController(length: 8, vsync: this);
   }
 
   @override
@@ -106,24 +138,177 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
     _facultyDesigCtrl.dispose();
     _facultySubCtrl.dispose();
     _facultyQualCtrl.dispose();
+    _galleryTitleCtrl.dispose();
+    _galleryQuoteCtrl.dispose();
+    _examQuestionCtrl.dispose();
+    _optACtrl.dispose();
+    _optBCtrl.dispose();
+    _optCCtrl.dispose();
+    _optDCtrl.dispose();
+    _expCtrl.dispose();
     super.dispose();
   }
 
-  // --- SMART CLASS MATCHING HELPER ---
   bool _matchesClass(String studentClass, String filter) {
     if (filter == 'ALL') return true;
-
     final scClean = studentClass.trim().toLowerCase();
     final fClean = filter.trim().toLowerCase();
-
     if (filter == 'Not Assigned') {
       return scClean.isEmpty || scClean.contains('not assigned') || scClean == 'null';
     }
-
     final normStudent = scClean.replaceAll('class', '').replaceAll('-', '').replaceAll(' ', '');
     final normFilter = fClean.replaceAll('class', '').replaceAll('-', '').replaceAll(' ', '');
-
     return normStudent == normFilter || scClean.contains(fClean) || fClean.contains(scClean);
+  }
+
+  // ==================== IMAGE UPLOADER FOR GALLERY ====================
+  Future<void> _pickAndUploadGalleryImage() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        withData: true,
+      );
+
+      if (result != null && result.files.single.bytes != null) {
+        setState(() => _isUploadingGallery = true);
+        final bytes = result.files.single.bytes!;
+        final base64Image = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+
+        final client = _supabaseClient;
+        if (client != null) {
+          await client.from('school_gallery').insert({
+            'category': _uploadGalleryCategory,
+            'title': _galleryTitleCtrl.text.trim().isNotEmpty
+                ? _galleryTitleCtrl.text.trim()
+                : _uploadGalleryCategory,
+            'quote': _galleryQuoteCtrl.text.trim(),
+            'image_data': base64Image,
+          });
+
+          _galleryTitleCtrl.clear();
+          _galleryQuoteCtrl.clear();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Photo successfully added to ' '$_uploadGalleryCategory!'),
+                backgroundColor: const Color(0xFF10B981),
+              ),
+            );
+          }
+        }
+        setState(() => _isUploadingGallery = false);
+      }
+    } catch (e) {
+      setState(() => _isUploadingGallery = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  // ==================== PDF QUESTION PAPER UPLOADER ====================
+  Future<void> _pickAndUploadExamPdf() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        withData: true,
+      );
+
+      if (result != null && result.files.single.bytes != null) {
+        final bytes = result.files.single.bytes!;
+        final base64Pdf = base64Encode(bytes);
+        final fileName = result.files.single.name;
+
+        final client = _supabaseClient;
+        if (client != null) {
+          await client.from('school_exams').insert({
+            'class_name': _manageExamClass,
+            'exam_type': 'pdf',
+            'title': fileName,
+            'pdf_name': fileName,
+            'pdf_base64': base64Pdf,
+          });
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('PDF Question Paper uploaded for $_manageExamClass!'),
+                backgroundColor: const Color(0xFF10B981),
+              ),
+            );
+            setState(() {});
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF upload error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  // ==================== SAVE MCQ QUESTION ====================
+  Future<void> _saveMcqQuestion() async {
+    final qText = _examQuestionCtrl.text.trim();
+    final aText = _optACtrl.text.trim();
+    final bText = _optBCtrl.text.trim();
+
+    if (qText.isEmpty || aText.isEmpty || bText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill out the question and at least options A and B')),
+      );
+      return;
+    }
+
+    setState(() => _isSavingExam = true);
+    try {
+      final client = _supabaseClient;
+      if (client != null) {
+        await client.from('school_exams').insert({
+          'class_name': _manageExamClass,
+          'exam_type': 'mcq',
+          'title': qText,
+          'question': qText,
+          'option_a': aText,
+          'option_b': bText,
+          'option_c': _optCCtrl.text.trim(),
+          'option_d': _optDCtrl.text.trim(),
+          'correct_index': _correctOptIndex,
+          'explanation': _expCtrl.text.trim(),
+        });
+
+        _examQuestionCtrl.clear();
+        _optACtrl.clear();
+        _optBCtrl.clear();
+        _optCCtrl.clear();
+        _optDCtrl.clear();
+        _expCtrl.clear();
+        _correctOptIndex = 0;
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('MCQ Question added successfully!'),
+              backgroundColor: Color(0xFF10B981),
+            ),
+          );
+          setState(() {});
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving question: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      setState(() => _isSavingExam = false);
+    }
   }
 
   // --- PRINT FEE RECEIPT PDF (ADMIN) ---
@@ -371,7 +556,7 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
       _admNoCtrl.text = (student['admission_number'] ?? student['scholar_no'] ?? '').toString();
       _formClass = schoolClasses.contains(student['class_grade'])
           ? student['class_grade']
-          : 'Class 10-A';
+          : 'Class 10';
       _parentNameCtrl.text = student['parent_name'] ?? student['father_name'] ?? '';
       _motherNameCtrl.text = student['mother_name'] ?? '';
       _parentPhoneCtrl.text = student['parent_phone'] ?? student['mobile_number'] ?? '';
@@ -394,7 +579,7 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
       _feeDueCtrl.text = '0';
       _attCtrl.text = '92';
       _marksCtrl.text = 'A';
-      _formClass = 'Class 10-A';
+      _formClass = 'Class 10';
     }
 
     showModalBottomSheet(
@@ -1012,6 +1197,7 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
               Tab(icon: Icon(Icons.photo_library_rounded, size: 19), text: 'Gallery'),
               Tab(icon: Icon(Icons.campaign_rounded, size: 19), text: 'Circulars'),
               Tab(icon: Icon(Icons.report_problem_rounded, size: 19), text: 'Complaints'),
+              Tab(icon: Icon(Icons.quiz_rounded, size: 19), text: 'Exams & Q-Papers'),
             ],
           ),
         ),
@@ -1086,7 +1272,6 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
                         final allStudents = snapshot.data!;
                         var list = allStudents;
 
-                        // Calculate Executive KPIs
                         final totalEnrolled = allStudents.length;
                         final clearedFeesCount = allStudents.where((s) => (s['pending_fees'] ?? '0').toString() == '0').length;
 
@@ -1108,7 +1293,6 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
 
                         return Column(
                           children: [
-                            // KPI Summary Strip
                             Padding(
                               padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
                               child: Row(
@@ -1256,10 +1440,7 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
                               contentPadding: EdgeInsets.zero,
                               filled: true,
                               fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide.none,
-                              ),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                             ),
                           ),
                         ),
@@ -1277,17 +1458,7 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
                             value: _feeClassFilter,
                             dropdownColor: cardBg,
                             items: schoolClasses
-                                .map((c) => DropdownMenuItem(
-                                      value: c,
-                                      child: Text(
-                                        c,
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.bold,
-                                          color: isDark ? Colors.white : const Color(0xFF0F1E36),
-                                        ),
-                                      ),
-                                    ))
+                                .map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold))))
                                 .toList(),
                             onChanged: (v) {
                               if (v != null) setState(() => _feeClassFilter = v);
@@ -1307,7 +1478,6 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
                       if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                       var list = snapshot.data!;
 
-                      // Search filter (Name, Phone, Roll)
                       if (_feeQuery.isNotEmpty) {
                         list = list.where((s) {
                           final name = (s['student_name'] ?? '').toString().toLowerCase();
@@ -1317,7 +1487,6 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
                         }).toList();
                       }
 
-                      // Class filter
                       if (_feeClassFilter != 'ALL') {
                         list = list.where((s) {
                           final grade = (s['class_grade'] ?? '').toString();
@@ -1327,10 +1496,7 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
 
                       if (list.isEmpty) {
                         return const Center(
-                          child: Text(
-                            'No matching fee records found.',
-                            style: TextStyle(color: Color(0xFF64748B)),
-                          ),
+                          child: Text('No matching fee records found.', style: TextStyle(color: Color(0xFF64748B))),
                         );
                       }
 
@@ -1346,17 +1512,10 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
                             margin: const EdgeInsets.only(bottom: 10),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             child: ListTile(
-                              title: Text(
-                                s['student_name'] ?? 'Student',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
+                              title: Text(s['student_name'] ?? 'Student', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                               subtitle: Text(
                                 'Class: ${s['class_grade'] ?? 'Not Assigned'}\n${isClear ? 'All Dues Paid ✓' : 'Pending: ₹$pending'}',
-                                style: TextStyle(
-                                  color: isClear ? const Color(0xFF10B981) : const Color(0xFFDC2626),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 11.5,
-                                ),
+                                style: TextStyle(color: isClear ? const Color(0xFF10B981) : const Color(0xFFDC2626), fontWeight: FontWeight.bold, fontSize: 11.5),
                               ),
                               trailing: ElevatedButton(
                                 style: ElevatedButton.styleFrom(
@@ -1516,7 +1675,7 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
               ),
             ),
 
-            // ==================== TAB 5: GALLERY ====================
+            // ==================== TAB 5: GALLERY & HERO SLIDESHOW MANAGER ====================
             SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -1524,43 +1683,115 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
                 children: [
                   Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: cardBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE2E8F0))),
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.3)),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('HOMEPAGE HERO SLIDESHOW', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E3A8A))),
-                        const SizedBox(height: 6),
-                        const Text('Update homepage hero photos and campus highlight pictures directly.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                        const Text(
+                          'UPLOAD CAMPUS & SLIDESHOW PHOTOS',
+                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Color(0xFF1E3A8A)),
+                        ),
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<String>(
+                          value: _uploadGalleryCategory,
+                          decoration: const InputDecoration(labelText: 'Target Album / Category', border: OutlineInputBorder()),
+                          items: const [
+                            DropdownMenuItem(value: 'Hero Slideshow', child: Text('Hero Slideshow (Homepage Slider)')),
+                            DropdownMenuItem(value: 'Campus Life', child: Text('Campus Life Gallery')),
+                            DropdownMenuItem(value: 'Athletics', child: Text('Athletics Gallery')),
+                            DropdownMenuItem(value: 'Daily Life', child: Text('Daily Life Gallery')),
+                          ],
+                          onChanged: (v) {
+                            if (v != null) setState(() => _uploadGalleryCategory = v);
+                          },
+                        ),
                         const SizedBox(height: 12),
+                        TextField(
+                          controller: _galleryTitleCtrl,
+                          decoration: const InputDecoration(labelText: 'Photo Title / Caption', hintText: 'e.g. Smart Science Lab Demonstration', border: OutlineInputBorder()),
+                        ),
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: _galleryQuoteCtrl,
+                          decoration: const InputDecoration(labelText: 'Subtitle / Quote (Optional for Hero Slideshow)', hintText: 'e.g. Where curiosity meets excellence.', border: OutlineInputBorder()),
+                        ),
+                        const SizedBox(height: 14),
                         SizedBox(
                           width: double.infinity,
+                          height: 48,
                           child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
-                            icon: const Icon(Icons.add_photo_alternate_rounded),
-                            label: const Text('Select Photos from Device'),
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Media picker connected.')));
-                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1E3A8A),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            icon: _isUploadingGallery
+                                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                : const Icon(Icons.add_photo_alternate_rounded),
+                            label: Text(_isUploadingGallery ? 'Uploading Photo...' : 'Select & Upload Photo from Device'),
+                            onPressed: _isUploadingGallery ? null : _pickAndUploadGalleryImage,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  const Text('ACTIVE CAMPUS MEDIA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF64748B))),
-                  const SizedBox(height: 8),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    children: [
-                      _buildGalleryThumb('Main Campus Building', 'Hero Slideshow'),
-                      _buildGalleryThumb('Smart Science Lab', 'Campus Life'),
-                      _buildGalleryThumb('Sports & Playground', 'Athletics'),
-                      _buildGalleryThumb('Morning Assembly', 'Daily Life'),
-                    ],
+                  const SizedBox(height: 20),
+                  const Text('ACTIVE UPLOADED MEDIA & SLIDES', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF64748B))),
+                  const SizedBox(height: 10),
+                  FutureBuilder<List<Map<String, dynamic>>>(
+                    future: _supabaseClient != null
+                        ? _supabaseClient!.from('school_gallery').select().order('created_at', ascending: false)
+                        : Future.value([]),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                      final galleryList = snapshot.data!;
+                      if (galleryList.isEmpty) {
+                        return const Padding(
+                          padding: EdgeInsets.all(20.0),
+                          child: Text('No photos uploaded yet. Use the form above to add photos.', style: TextStyle(color: Color(0xFF64748B))),
+                        );
+                      }
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: galleryList.length,
+                        itemBuilder: (context, i) {
+                          final item = galleryList[i];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            child: ListTile(
+                              leading: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: SizedBox(
+                                  width: 50,
+                                  height: 50,
+                                  child: Image.network(
+                                    item['image_data']?.toString() ?? '',
+                                    fit: BoxFit.cover,
+                                    errorCallback: (_, __, ___) => const Icon(Icons.image),
+                                  ),
+                                ),
+                              ),
+                              title: Text(item['title'] ?? 'Untitled', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                              subtitle: Text('Album: ${item['category']}\nQuote: ${item['quote'] ?? 'None'}', maxLines: 2, style: const TextStyle(fontSize: 11)),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                                onPressed: () async {
+                                  if (_supabaseClient != null) {
+                                    await _supabaseClient!.from('school_gallery').delete().eq('id', item['id']);
+                                    setState(() {});
+                                  }
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
                   ),
                 ],
               ),
@@ -1725,6 +1956,182 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
                 );
               },
             ),
+
+            // ==================== TAB 8: EXAMS & Q-PAPERS MANAGER ====================
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFD97706).withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'CLASS-WISE EXAM & QUESTION PAPER MANAGER',
+                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Color(0xFFD97706)),
+                        ),
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<String>(
+                          value: _manageExamClass,
+                          decoration: const InputDecoration(labelText: 'Select Target Class', border: OutlineInputBorder()),
+                          items: schoolClasses
+                              .where((c) => c != 'ALL' && c != 'Not Assigned')
+                              .map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 13))))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) setState(() => _manageExamClass = v);
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        const Divider(),
+                        const SizedBox(height: 8),
+
+                        // Section A: PDF Question Paper Upload
+                        const Text('1. Upload Question Paper PDF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF1E3A8A))),
+                        const SizedBox(height: 6),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 44,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFD97706),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                            label: Text('Upload PDF for $_manageExamClass'),
+                            onPressed: _pickAndUploadExamPdf,
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+                        const Divider(),
+                        const SizedBox(height: 8),
+
+                        // Section B: Add MCQ Question
+                        const Text('2. Add Interactive MCQ Question', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF1E3A8A))),
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: _examQuestionCtrl,
+                          maxLines: 2,
+                          decoration: const InputDecoration(labelText: 'Question Statement *', border: OutlineInputBorder()),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(child: TextField(controller: _optACtrl, decoration: const InputDecoration(labelText: 'Option A *', border: OutlineInputBorder()))),
+                            const SizedBox(width: 8),
+                            Expanded(child: TextField(controller: _optBCtrl, decoration: const InputDecoration(labelText: 'Option B *', border: OutlineInputBorder()))),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(child: TextField(controller: _optCCtrl, decoration: const InputDecoration(labelText: 'Option C', border: OutlineInputBorder()))),
+                            const SizedBox(width: 8),
+                            Expanded(child: TextField(controller: _optDCtrl, decoration: const InputDecoration(labelText: 'Option D', border: OutlineInputBorder()))),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            const Text('Correct Option:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                            const SizedBox(width: 12),
+                            DropdownButton<int>(
+                              value: _correctOptIndex,
+                              items: const [
+                                DropdownMenuItem(value: 0, child: Text('Option A')),
+                                DropdownMenuItem(value: 1, child: Text('Option B')),
+                                DropdownMenuItem(value: 2, child: Text('Option C')),
+                                DropdownMenuItem(value: 3, child: Text('Option D')),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) setState(() => _correctOptIndex = val);
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: _expCtrl,
+                          decoration: const InputDecoration(labelText: 'Explanation (Shown after answering)', border: OutlineInputBorder()),
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1E3A8A),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: _isSavingExam ? null : _saveMcqQuestion,
+                            child: _isSavingExam
+                                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                : Text('Save MCQ for $_manageExamClass', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text('ACTIVE EXAM MATERIALS FOR: $_manageExamClass', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF64748B))),
+                  const SizedBox(height: 10),
+                  FutureBuilder<List<Map<String, dynamic>>>(
+                    future: _supabaseClient != null
+                        ? _supabaseClient!.from('school_exams').select().eq('class_name', _manageExamClass).order('created_at', ascending: false)
+                        : Future.value([]),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                      final examItems = snapshot.data!;
+                      if (examItems.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Text('No question papers or MCQs uploaded for $_manageExamClass yet.', style: const TextStyle(color: Color(0xFF64748B))),
+                        );
+                      }
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: examItems.length,
+                        itemBuilder: (context, i) {
+                          final ex = examItems[i];
+                          final isPdf = (ex['exam_type'] ?? '') == 'pdf';
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: Icon(
+                                isPdf ? Icons.picture_as_pdf_rounded : Icons.quiz_rounded,
+                                color: isPdf ? const Color(0xFFD97706) : const Color(0xFF1E3A8A),
+                              ),
+                              title: Text(ex['title'] ?? ex['question'] ?? 'Exam Item', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                              subtitle: Text(isPdf ? 'PDF Question Paper' : 'MCQ Question • Correct: Option ${String.fromCharCode(65 + (ex['correct_index'] ?? 0))}', style: const TextStyle(fontSize: 11)),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                                onPressed: () async {
+                                  if (_supabaseClient != null) {
+                                    await _supabaseClient!.from('school_exams').delete().eq('id', ex['id']);
+                                    setState(() {});
+                                  }
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -1759,28 +2166,6 @@ class _AdminHubScreenState extends State<AdminHubScreen> with SingleTickerProvid
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(8), border: Border.all(color: color.withOpacity(0.2))),
         child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
-      ),
-    );
-  }
-
-  Widget _buildGalleryThumb(String title, String tag) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF0F1E36), Color(0xFF1E3A8A)]),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(color: const Color(0xFFD97706), borderRadius: BorderRadius.circular(4)),
-            child: Text(tag, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-          ),
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-        ],
       ),
     );
   }
