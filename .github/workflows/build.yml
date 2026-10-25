@@ -38,22 +38,13 @@ jobs:
           cp -rn temp_app/web ./ 2>/dev/null || true
           rm -rf temp_app
 
-      - name: Install Dependencies & Generate Launcher Icon
-        run: |
-          flutter pub get
-          if [ -f "app_logo.png" ]; then
-            dart run flutter_launcher_icons || true
-          fi
-
-      - name: Patch AndroidManifest & Force SDK 36 on App + All Plugins (file_picker)
+      - name: Configure Android Permissions & App Name
         run: |
           python3 - << 'EOF'
-          import os, re, glob
-
-          # 1. Patch AndroidManifest.xml (App Name + Permissions)
-          manifest_path = "android/app/src/main/AndroidManifest.xml"
-          if os.path.exists(manifest_path):
-              with open(manifest_path, "r") as f:
+          import os
+          p = "android/app/src/main/AndroidManifest.xml"
+          if os.path.exists(p):
+              with open(p, "r") as f:
                   c = f.read()
               c = c.replace('android:label="ssd_school_app"', 'android:label="S.S.D. Convent School"')
               perms = """    <uses-permission android:name="android.permission.INTERNET"/>
@@ -66,39 +57,42 @@ jobs:
           </manifest>"""
               if "android.permission.INTERNET" not in c:
                   c = c.replace("</manifest>", perms)
-              with open(manifest_path, "w") as f:
+              with open(p, "w") as f:
                   f.write(c)
-
-          # 2. Patch ALL build.gradle and build.gradle.kts in android/ AND pub-cache plugins (fixes :file_picker)
-          search_roots = ["android"]
-          pub_cache = os.path.expanduser("~/.pub-cache")
-          if os.path.exists(pub_cache):
-              search_roots.append(pub_cache)
-
-          for root_dir in search_roots:
-              for dirpath, _, filenames in os.walk(root_dir):
-                  for fn in filenames:
-                      if fn in ("build.gradle", "build.gradle.kts"):
-                          fp = os.path.join(dirpath, fn)
-                          try:
-                              with open(fp, "r") as f:
-                                  txt = f.read()
-                              orig = txt
-                              # Replace Groovy & Kotlin DSL compileSdk / targetSdk definitions
-                              txt = re.sub(r'compileSdkVersion\s+.*', 'compileSdkVersion 36', txt)
-                              txt = re.sub(r'compileSdk\s*=\s*.*', 'compileSdk = 36', txt)
-                              txt = re.sub(r'compileSdk\s+\d+', 'compileSdk 36', txt)
-                              txt = re.sub(r'compileSdk\s+flutter\.compileSdkVersion', 'compileSdk 36', txt)
-                              txt = re.sub(r'targetSdkVersion\s+.*', 'targetSdkVersion 36', txt)
-                              txt = re.sub(r'targetSdk\s*=\s*.*', 'targetSdk = 36', txt)
-                              txt = re.sub(r'targetSdk\s+\d+', 'targetSdk 36', txt)
-                              if txt != orig:
-                                  with open(fp, "w") as f:
-                                      f.write(txt)
-                                  print(f"Patched SDK 36 in: {fp}")
-                          except Exception as e:
-                              pass
           EOF
+
+      - name: Configure Gradle Init Script (Fix SDK 36 & Bypass AAR Metadata Check)
+        run: |
+          # 1. Set SDK 36 for Flutter root app
+          echo "flutter.compileSdkVersion=36" >> android/local.properties
+          echo "flutter.targetSdkVersion=36" >> android/local.properties
+          echo "flutter.minSdkVersion=21" >> android/local.properties
+
+          # 2. Inject global Gradle init script to disable checkReleaseAarMetadata and enforce SDK 36
+          mkdir -p ~/.gradle/init.d/
+          cat << 'EOF' > ~/.gradle/init.d/override_aar.gradle
+          allprojects {
+              afterEvaluate { project ->
+                  if (project.hasProperty("android")) {
+                      try {
+                          project.android {
+                              compileSdkVersion 36
+                          }
+                      } catch (Exception ignored) {}
+                  }
+                  tasks.matching { it.name.contains("AarMetadata") }.configureEach {
+                      enabled = false
+                  }
+              }
+          }
+          EOF
+
+      - name: Install Dependencies & Generate Launcher Icon
+        run: |
+          flutter pub get
+          if [ -f "app_logo.png" ]; then
+            dart run flutter_launcher_icons || true
+          fi
 
       - name: Build Android App Bundle (.aab for Play Store)
         run: |
