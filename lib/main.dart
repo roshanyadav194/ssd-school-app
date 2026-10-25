@@ -12,7 +12,7 @@ void main() async {
   try {
     await Supabase.initialize(
       url: 'https://shlzyjkkckmdxolwenvk.supabase.co',
-      anonKey: 'Sb_publishable_6yYdqREcVbFa_65ARl1EWA_rGjENe1n',
+      anonKey: 'sb_publishable_6yYdqREcVbFa_65ARl1EWA_rGjENe1n', // <-- PASTE YOUR REAL ANON KEY HERE
     );
   } catch (_) {}
 
@@ -277,11 +277,8 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildTopBar(textColor, subTextColor),
-
                     const SizedBox(height: 8),
-
                     _buildHeroSlideCard(),
-
                     const SizedBox(height: 22),
 
                     Padding(
@@ -325,7 +322,6 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 14),
 
                     Padding(
@@ -420,9 +416,7 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       child: Row(
@@ -451,15 +445,10 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 36),
-
                     _buildExamPortalSection(textColor, subTextColor, cardBgColor),
-
                     const SizedBox(height: 36),
-
                     _buildGallerySection(textColor, subTextColor, cardBgColor),
-
                     const SizedBox(height: 30),
                   ],
                 ),
@@ -1463,7 +1452,7 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
                           ),
                           alignment: Alignment.center,
                           child: Text(
-                            'Teacher / Staff',
+                            'Admin', // CHANGED FROM TEACHER / STAFF
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
