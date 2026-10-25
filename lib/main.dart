@@ -11,15 +11,6 @@ void main() {
     DeviceOrientation.portraitDown,
   ]);
 
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Color(0xFF030914),
-      systemNavigationBarIconBrightness: Brightness.light,
-    ),
-  );
-
   runApp(const SSDConventApp());
 }
 
@@ -33,19 +24,41 @@ class SSDConventApp extends StatefulWidget {
 class _SSDConventAppState extends State<SSDConventApp> {
   bool _isDark = true;
 
+  void _toggleTheme() {
+    setState(() {
+      _isDark = !_isDark;
+      SystemChrome.setSystemUIOverlayStyle(
+        SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: _isDark ? Brightness.light : Brightness.dark,
+          systemNavigationBarColor:
+              _isDark ? const Color(0xFF040A17) : const Color(0xFFF8FAFC),
+          systemNavigationBarIconBrightness:
+              _isDark ? Brightness.light : Brightness.dark,
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'S.S.D. Convent School',
       debugShowCheckedModeBanner: false,
+      themeMode: _isDark ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+        fontFamily: 'sans-serif',
+      ),
+      darkTheme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF040A17),
         fontFamily: 'sans-serif',
       ),
       home: SchoolPortalHomeScreen(
         isDark: _isDark,
-        onToggleTheme: () => setState(() => _isDark = !_isDark),
+        onToggleTheme: _toggleTheme,
       ),
     );
   }
@@ -70,6 +83,15 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
   final PageController _pageController = PageController();
   Timer? _sliderTimer;
 
+  // Exam & Gallery State
+  String _selectedClass = 'Class 10';
+  String _selectedGalleryCategory = 'All';
+
+  final List<String> _classes = [
+    'Nursery', 'KG', 'Class 1', 'Class 2', 'Class 3', 'Class 4',
+    'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12'
+  ];
+
   final List<Map<String, String>> _slides = [
     {
       'tag': 'LEARN  •  GROW  •  ACHIEVE',
@@ -89,6 +111,36 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
       'desc':
           'Dedicated faculty guiding students\nto shine in academics, sports, arts,\nand national competitive careers.',
     },
+  ];
+
+  final List<Map<String, String>> _sampleExams = [
+    {
+      'subject': 'Mathematics Term Exam',
+      'type': 'PDF Assessment',
+      'duration': '2.5 Hours',
+      'isPdf': 'true',
+    },
+    {
+      'subject': 'Science & Technology Quiz',
+      'type': 'MCQ Practice',
+      'duration': '45 Mins',
+      'isPdf': 'false',
+    },
+    {
+      'subject': 'English Language & Grammar',
+      'type': 'PDF Assessment',
+      'duration': '2 Hours',
+      'isPdf': 'true',
+    },
+  ];
+
+  final List<Map<String, String>> _galleryItems = [
+    {'title': 'Annual Sports Meet', 'category': 'Athletics & Sports', 'desc': 'Champions track & sports awards'},
+    {'title': 'Smart Computer Lab', 'category': 'Academics & Labs', 'desc': 'Hands-on IT practical training'},
+    {'title': 'Morning Assembly', 'category': 'Campus Life', 'desc': 'Daily student speeches & discipline'},
+    {'title': 'Science & Innovation', 'category': 'Academics & Labs', 'desc': 'Robotics & physics models'},
+    {'title': 'Inter-School Football', 'category': 'Athletics & Sports', 'desc': 'Junior & senior sports tournament'},
+    {'title': 'Cultural Fest & Stage', 'category': 'Campus Life', 'desc': 'Music, dance and cultural celebrations'},
   ];
 
   @override
@@ -199,16 +251,20 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Dynamic Theme Colors
+    final textColor = widget.isDark ? Colors.white : const Color(0xFF0F172A);
+    final subTextColor = widget.isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+    final cardBgColor = widget.isDark ? const Color(0xFF0A182E) : Colors.white;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF040A17),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ================= TOP BAR =================
-              _buildTopBar(),
+              // ================= TOP BAR (No Menu Button) =================
+              _buildTopBar(textColor, subTextColor),
 
               const SizedBox(height: 8),
 
@@ -234,25 +290,25 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Text(
+                        Text(
                           'Campus Directory & Helpline',
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                            color: textColor,
                             letterSpacing: 0.2,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 11),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 11),
                       child: Text(
                         'Quick access to important contacts and campus information.',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Color(0xFF94A3B8),
+                          color: subTextColor,
                         ),
                       ),
                     ),
@@ -267,7 +323,6 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Column(
                   children: [
-                    // ROW 1: EMERALD GREEN (Phone) + CRIMSON RED (Exact Maps Location)
                     Row(
                       children: [
                         Expanded(
@@ -304,15 +359,13 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
                             btnIcon: Icons.map_rounded,
                             btnBg: const Color(0xFF881337),
                             btnTextColor: const Color(0xFFFDA4AF),
-                            onTap: () => _openUrl('https://maps.app.goo.gl/nY78gwbSR8aiYyJFA?g_st=ac'),
+                            onTap: () => _openUrl(
+                                'https://maps.app.goo.gl/nY78gwbSR8aiYyJFA?g_st=ac'),
                           ),
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 12),
-
-                    // ROW 2: OCEAN BLUE (Visiting Hours) + ROYAL PURPLE (Updated Official Email)
                     Row(
                       children: [
                         Expanded(
@@ -371,6 +424,8 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
                         icon: Icons.phone_rounded,
                         label: 'Call School Office',
                         accent: const Color(0xFF38BDF8),
+                        cardBgColor: cardBgColor,
+                        textColor: textColor,
                         onTap: () => _openUrl('tel:+917880884750'),
                       ),
                     ),
@@ -380,6 +435,8 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
                         icon: Icons.chat_rounded,
                         label: 'WhatsApp Chat',
                         accent: const Color(0xFF10B981),
+                        cardBgColor: cardBgColor,
+                        textColor: textColor,
                         onTap: () => _openUrl('https://wa.me/917880884750'),
                       ),
                     ),
@@ -387,7 +444,7 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
               // ================= BIG GLOWING LOGIN BUTTON =================
               Padding(
@@ -406,11 +463,11 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                     ),
-                    boxShadow: const [
+                    boxShadow: [
                       BoxShadow(
-                        color: Color(0x662563EB),
+                        color: const Color(0xFF2563EB).withOpacity(widget.isDark ? 0.4 : 0.2),
                         blurRadius: 20,
-                        offset: Offset(0, 8),
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
@@ -455,6 +512,16 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
               ),
 
               const SizedBox(height: 36),
+
+              // ================= EXAM PORTAL SECTION =================
+              _buildExamPortalSection(textColor, subTextColor, cardBgColor),
+
+              const SizedBox(height: 36),
+
+              // ================= GALLERY SECTION =================
+              _buildGallerySection(textColor, subTextColor, cardBgColor),
+
+              const SizedBox(height: 50),
             ],
           ),
         ),
@@ -463,7 +530,7 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
   }
 
   // ================= TOP HEADER BAR =================
-  Widget _buildTopBar() {
+  Widget _buildTopBar(Color textColor, Color subTextColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
@@ -491,7 +558,7 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -500,21 +567,21 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
                   style: TextStyle(
                     fontSize: 16.5,
                     fontWeight: FontWeight.w900,
-                    color: Colors.white,
+                    color: textColor,
                     letterSpacing: 0.2,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
                   'Family Information Portal',
                   style: TextStyle(
                     fontSize: 11.5,
-                    color: Color(0xFF94A3B8),
+                    color: subTextColor,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                SizedBox(height: 2),
-                Text(
+                const SizedBox(height: 2),
+                const Text(
                   'LEARN   •   GROW   •   ACHIEVE',
                   style: TextStyle(
                     fontSize: 9.5,
@@ -526,31 +593,22 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0F2342),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.white12),
-            ),
-            child: const Icon(
-              Icons.wb_sunny_rounded,
-              color: Color(0xFFFDE68A),
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0F2342),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.white12),
-            ),
-            child: const Icon(
-              Icons.menu_rounded,
-              color: Colors.white,
-              size: 18,
+          // Working Theme Toggle Button
+          GestureDetector(
+            onTap: widget.onToggleTheme,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: widget.isDark ? const Color(0xFF0F2342) : Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: widget.isDark ? Colors.white12 : Colors.black12),
+              ),
+              child: Icon(
+                widget.isDark ? Icons.wb_sunny_rounded : Icons.nightlight_round,
+                color: const Color(0xFFFDE68A),
+                size: 20,
+              ),
             ),
           ),
         ],
@@ -856,6 +914,8 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
     required IconData icon,
     required String label,
     required Color accent,
+    required Color cardBgColor,
+    required Color textColor,
     required VoidCallback onTap,
   }) {
     return InkWell(
@@ -864,9 +924,10 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF071426),
+          color: cardBgColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white12),
+          border: Border.all(
+              color: widget.isDark ? Colors.white12 : Colors.black12),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -877,24 +938,295 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
                 const SizedBox(width: 8),
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: textColor,
                   ),
                 ),
               ],
             ),
-            const Icon(Icons.arrow_forward_rounded,
-                size: 14, color: Colors.white38),
+            Icon(Icons.arrow_forward_rounded,
+                size: 14, color: widget.isDark ? Colors.white38 : Colors.black38),
           ],
         ),
       ),
     );
   }
+
+  // ================= EXAM PORTAL SECTION =================
+  Widget _buildExamPortalSection(
+      Color textColor, Color subTextColor, Color cardBgColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Class-Wise Exam Portal',
+                style: TextStyle(
+                    fontSize: 17, fontWeight: FontWeight.w800, color: textColor),
+              ),
+              const Text(
+                '2026 Session',
+                style: TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFFFACC15),
+                    fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 38,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: _classes.length,
+            itemBuilder: (context, i) {
+              final c = _classes[i];
+              final isSel = c == _selectedClass;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedClass = c),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isSel ? const Color(0xFF1E3A8A) : cardBgColor,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: isSel
+                            ? const Color(0xFF3B82F6)
+                            : (widget.isDark
+                                ? Colors.white12
+                                : Colors.black12)),
+                  ),
+                  child: Text(
+                    c,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color: isSel ? Colors.white : subTextColor,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 14),
+        ..._sampleExams.map((exam) => Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: widget.isDark ? const Color(0xFF0F172A) : Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: widget.isDark ? Colors.white12 : Colors.black12),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E3A8A).withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      exam['isPdf'] == 'true'
+                          ? Icons.picture_as_pdf_rounded
+                          : Icons.quiz_rounded,
+                      color: const Color(0xFFFACC15),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          exam['subject']!,
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13.5,
+                              color: textColor),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${exam['type']} • ${exam['duration']}',
+                          style: TextStyle(fontSize: 11.5, color: subTextColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFACC15),
+                      foregroundColor: const Color(0xFF0F172A),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 0),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                      minimumSize: const Size(60, 36),
+                    ),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text(
+                                'Opening ${exam['subject']} for $_selectedClass')),
+                      );
+                    },
+                    child: const Text('Start',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 13)),
+                  ),
+                ],
+              ),
+            )),
+      ],
+    );
+  }
+
+  // ================= GALLERY SECTION =================
+  Widget _buildGallerySection(
+      Color textColor, Color subTextColor, Color cardBgColor) {
+    final categories = [
+      'All',
+      'Campus Life',
+      'Athletics & Sports',
+      'Academics & Labs'
+    ];
+    final filtered = _selectedGalleryCategory == 'All'
+        ? _galleryItems
+        : _galleryItems
+            .where((g) => g['category'] == _selectedGalleryCategory)
+            .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'Campus Photo Gallery',
+            style: TextStyle(
+                fontSize: 17, fontWeight: FontWeight.w800, color: textColor),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 36,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: categories.length,
+            itemBuilder: (context, i) {
+              final cat = categories[i];
+              final isSel = cat == _selectedGalleryCategory;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedGalleryCategory = cat),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isSel ? const Color(0xFF2563EB) : cardBgColor,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: isSel
+                            ? const Color(0xFF3B82F6)
+                            : (widget.isDark
+                                ? Colors.white12
+                                : Colors.black12)),
+                  ),
+                  child: Text(
+                    cat,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isSel ? Colors.white : subTextColor,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 14),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 0.95,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+          ),
+          itemCount: filtered.length,
+          itemBuilder: (context, i) {
+            final item = filtered[i];
+            return Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: widget.isDark ? const Color(0xFF0F172A) : Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: widget.isDark ? Colors.white12 : Colors.black12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E3A8A).withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.image_rounded,
+                        color: Color(0xFFFACC15), size: 22),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item['title']!,
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12.5,
+                            color: textColor),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item['desc']!,
+                        style: TextStyle(fontSize: 10.5, color: subTextColor),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
 }
 
-// ================= NATIVE LOGIN SCREEN =================
+// ================= RESTORED NATIVE LOGIN SCREEN =================
 class NativeLoginScreen extends StatefulWidget {
   const NativeLoginScreen({super.key});
 
@@ -903,34 +1235,87 @@ class NativeLoginScreen extends StatefulWidget {
 }
 
 class _NativeLoginScreenState extends State<NativeLoginScreen> {
-  int _activeTab = 0;
+  int _activeTab = 0; // 0: Student / Parent, 1: Teacher / Staff (Admin)
   bool _obscure = true;
-  final TextEditingController _id = TextEditingController();
-  final TextEditingController _pass = TextEditingController();
+
+  // Student / Parent controllers
+  final TextEditingController _parentPhoneController = TextEditingController();
+  final TextEditingController _parentDobController = TextEditingController();
+
+  // Admin / Staff controllers
+  final TextEditingController _adminEmailController = TextEditingController();
+  final TextEditingController _adminPassController = TextEditingController();
 
   @override
   void dispose() {
-    _id.dispose();
-    _pass.dispose();
+    _parentPhoneController.dispose();
+    _parentDobController.dispose();
+    _adminEmailController.dispose();
+    _adminPassController.dispose();
     super.dispose();
+  }
+
+  void _handleSignIn() {
+    if (_activeTab == 0) {
+      final phone = _parentPhoneController.text.trim();
+      final dob = _parentDobController.text.trim();
+      if (phone.isEmpty || dob.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter Mobile Number and Birth Year/DOB'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logging in with Mobile: $phone ...'),
+          backgroundColor: const Color(0xFF2563EB),
+        ),
+      );
+    } else {
+      final email = _adminEmailController.text.trim();
+      final pass = _adminPassController.text.trim();
+      if (email.isEmpty || pass.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter Official Email and Password'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Authenticating Admin: $email ...'),
+          backgroundColor: const Color(0xFF2563EB),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+    final bgInput = isDark ? const Color(0xFF071426) : Colors.white;
+    final borderColor = isDark ? Colors.white12 : Colors.black12;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF040A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF040A17),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Colors.white, size: 18),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: textColor, size: 18),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Family Portal Login',
           style: TextStyle(
-              fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
         ),
       ),
       body: SafeArea(
@@ -956,29 +1341,32 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Center(
+              Center(
                 child: Text(
-                  'Welcome to S.S.D. Portal',
+                  'Welcome to S.S.D. Family Portal',
                   style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
-                      color: Colors.white),
+                      color: textColor),
                 ),
               ),
               const SizedBox(height: 4),
-              const Center(
+              Center(
                 child: Text(
-                  'Sign in to access student grades, fees & records',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                  'Access attendance, report cards, fee receipts & notices',
+                  style: TextStyle(fontSize: 12, color: subTextColor),
+                  textAlign: TextAlign.center,
                 ),
               ),
               const SizedBox(height: 24),
+
+              // ================= SEGMENTED TAB SELECTOR =================
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF09162A),
+                  color: isDark ? const Color(0xFF09162A) : Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white12),
+                  border: Border.all(color: borderColor),
                 ),
                 child: Row(
                   children: [
@@ -1001,7 +1389,7 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
                               fontWeight: FontWeight.bold,
                               color: _activeTab == 0
                                   ? Colors.white
-                                  : Colors.white60,
+                                  : (isDark ? Colors.white60 : Colors.black54),
                             ),
                           ),
                         ),
@@ -1026,7 +1414,7 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
                               fontWeight: FontWeight.bold,
                               color: _activeTab == 1
                                   ? Colors.white
-                                  : Colors.white60,
+                                  : (isDark ? Colors.white60 : Colors.black54),
                             ),
                           ),
                         ),
@@ -1035,86 +1423,198 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 22),
-              const Text('Registered ID / Mobile Number',
+
+              const SizedBox(height: 24),
+
+              // ================= TAB 0: PARENT / STUDENT PANEL =================
+              if (_activeTab == 0) ...[
+                Text(
+                  'Registered Mobile Number',
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFFCBD5E1))),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _id,
-                style: const TextStyle(color: Colors.white, fontSize: 13.5),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: const Color(0xFF071426),
-                  hintText: 'e.g. SSD2026/0412 or 9876543210',
-                  hintStyle:
-                      const TextStyle(color: Colors.white24, fontSize: 12.5),
-                  prefixIcon: const Icon(Icons.person_rounded,
-                      color: Color(0xFF38BDF8), size: 18),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.white12),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.white12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF38BDF8)),
-                  ),
+                      color: subTextColor),
                 ),
-              ),
-              const SizedBox(height: 16),
-              const Text('Password',
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFCBD5E1))),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _pass,
-                obscureText: _obscure,
-                style: const TextStyle(color: Colors.white, fontSize: 13.5),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: const Color(0xFF071426),
-                  hintText: 'Enter your password',
-                  hintStyle:
-                      const TextStyle(color: Colors.white24, fontSize: 12.5),
-                  prefixIcon: const Icon(Icons.lock_rounded,
-                      color: Color(0xFF38BDF8), size: 18),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscure
-                          ? Icons.visibility_off_rounded
-                          : Icons.visibility_rounded,
-                      color: Colors.white38,
-                      size: 18,
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _parentPhoneController,
+                  keyboardType: TextInputType.phone,
+                  style: TextStyle(color: textColor, fontSize: 13.5),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: bgInput,
+                    hintText: 'Enter 10-digit mobile number',
+                    hintStyle:
+                        TextStyle(color: subTextColor.withOpacity(0.5), fontSize: 12.5),
+                    prefixIcon: const Icon(Icons.phone_android_rounded,
+                        color: Color(0xFF38BDF8), size: 18),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
                     ),
-                    onPressed: () => setState(() => _obscure = !_obscure),
-                  ),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.white12),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.white12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF38BDF8)),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF38BDF8)),
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 16),
+                Text(
+                  'Date of Birth / Year',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: subTextColor),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _parentDobController,
+                  keyboardType: TextInputType.datetime,
+                  style: TextStyle(color: textColor, fontSize: 13.5),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: bgInput,
+                    hintText: 'DD/MM/YYYY or Birth Year (e.g., 2012)',
+                    hintStyle:
+                        TextStyle(color: subTextColor.withOpacity(0.5), fontSize: 12.5),
+                    prefixIcon: const Icon(Icons.calendar_today_rounded,
+                        color: Color(0xFF38BDF8), size: 18),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF38BDF8)),
+                    ),
+                  ),
+                ),
+              ],
+
+              // ================= TAB 1: TEACHER / STAFF / ADMIN PANEL =================
+              if (_activeTab == 1) ...[
+                Text(
+                  'Official School Email',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: subTextColor),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _adminEmailController,
+                  keyboardType: TextInputType.emailAddress,
+                  style: TextStyle(color: textColor, fontSize: 13.5),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: bgInput,
+                    hintText: 'e.g., admin@ssdconvent.com',
+                    hintStyle:
+                        TextStyle(color: subTextColor.withOpacity(0.5), fontSize: 12.5),
+                    prefixIcon: const Icon(Icons.email_rounded,
+                        color: Color(0xFF38BDF8), size: 18),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF38BDF8)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Password / Security PIN',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: subTextColor),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _adminPassController,
+                  obscureText: _obscure,
+                  style: TextStyle(color: textColor, fontSize: 13.5),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: bgInput,
+                    hintText: 'Enter your password',
+                    hintStyle:
+                        TextStyle(color: subTextColor.withOpacity(0.5), fontSize: 12.5),
+                    prefixIcon: const Icon(Icons.lock_rounded,
+                        color: Color(0xFF38BDF8), size: 18),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscure
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
+                        color: isDark ? Colors.white38 : Colors.black38,
+                        size: 18,
+                      ),
+                      onPressed: () => setState(() => _obscure = !_obscure),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF38BDF8)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                              'Please contact the system administrator to reset credentials.'),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'Forgot Password?',
+                      style: TextStyle(
+                        color: Color(0xFF38BDF8),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+
               const SizedBox(height: 20),
+
+              // ================= SIGN IN BUTTON =================
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -1125,26 +1625,34 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () {
-                    if (_id.text.isEmpty || _pass.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please enter ID and password'),
-                          backgroundColor: Colors.redAccent,
-                        ),
-                      );
-                      return;
+                  onPressed: _handleSignIn,
+                  child: const Text(
+                    'Sign In to Portal',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 22),
+
+              Center(
+                child: TextButton.icon(
+                  onPressed: () async {
+                    final uri = Uri.parse('tel:+917880884750');
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri);
                     }
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Verifying credentials...'),
-                        backgroundColor: Color(0xFF2563EB),
-                      ),
-                    );
                   },
-                  child: const Text('Sign In',
-                      style:
-                          TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                  icon: const Icon(Icons.help_outline_rounded,
+                      size: 16, color: Color(0xFFD6AD55)),
+                  label: const Text(
+                    'Need Help? Call School Helpline',
+                    style: TextStyle(
+                      color: Color(0xFFD6AD55),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ],
