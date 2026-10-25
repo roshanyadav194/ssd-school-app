@@ -2,31 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-// Screens
-import 'splash_screen.dart';
+// Import your custom native screens
 import 'school_discovery_screen.dart';
-import 'login_screen.dart';
-import 'admin_hub_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Supabase Cloud
+  // Initialize Supabase backend for gallery, exams, and notices
   try {
     await Supabase.initialize(
-      url: 'https://whqdfdhhubcvymuoyjvv.supabase.co', // Your project URL
-      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndocWRmZGh1YmN2eW11b3lqdnYiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTczODk0NjM5MSwiZXhwIjoyMDU0NTIyMzkxfQ.6r2V1yLw1l_t3N7u_R1y1v_U2j8v6w4x2y0z1a2b3c', // Your Supabase anon key
+      url: 'https://whqdfdhhubcvymuoyjvv.supabase.co',
+      anonKey:
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndocWRmZGh1YmN2eW11b3lqdnYiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTczODk0NjM5MSwiZXhwIjoyMDU0NTIyMzkxfQ.6r2V1yLw1l_t3N7u_R1y1v_U2j8v6w4x2y0z1a2b3c',
     );
   } catch (_) {}
 
-  // Lock UI to portrait mode and dark royal system overlay
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
-
+  // Lock status bar and navigation bar to Dark Royal branding
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -39,7 +31,7 @@ void main() async {
   runApp(const SSDConventApp());
 }
 
-// Global Theme Notifier for Dark Royal / Light Mode Toggle
+// Global Theme Toggle Notifier for Dark Royal / Light Theme
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
 
 void toggleSSDTheme() {
@@ -65,8 +57,9 @@ class SSDConventApp extends StatelessWidget {
             primaryColor: const Color(0xFF1E3A8A),
             scaffoldBackgroundColor: const Color(0xFFF8FAFC),
             fontFamily: 'Roboto',
+            useMaterial3: true,
             pageTransitionsTheme: const PageTransitionsTheme(
-              builders: {
+              builders: <TargetPlatform, PageTransitionsBuilder>{
                 TargetPlatform.android: CupertinoPageTransitionsBuilder(),
                 TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
               },
@@ -77,14 +70,15 @@ class SSDConventApp extends StatelessWidget {
             primaryColor: const Color(0xFF2563EB),
             scaffoldBackgroundColor: const Color(0xFF061123),
             fontFamily: 'Roboto',
+            useMaterial3: true,
             pageTransitionsTheme: const PageTransitionsTheme(
-              builders: {
+              builders: <TargetPlatform, PageTransitionsBuilder>{
                 TargetPlatform.android: CupertinoPageTransitionsBuilder(),
                 TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
               },
             ),
           ),
-          // Directly launches the Native Discovery Interface!
+          // Directly launches your native Dark Royal interface!
           home: const SchoolDiscoveryScreen(),
         );
       },
