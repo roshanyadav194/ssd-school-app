@@ -25,6 +25,11 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Accept Licenses & Install Android SDK 36
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" || true
+
       - name: Prepare Files & App Logo
         run: |
           mkdir -p lib
@@ -61,27 +66,24 @@ jobs:
                   f.write(c)
           EOF
 
-      - name: Configure Unified SDK 36 Across All Plugins
+      - name: Enforce SDK 36 Across Plugins Safely
         run: |
-          # 1. Ensure local.properties targets SDK 36
+          # 1. Update local.properties
           echo "flutter.compileSdkVersion=36" >> android/local.properties
           echo "flutter.targetSdkVersion=36" >> android/local.properties
           echo "flutter.minSdkVersion=21" >> android/local.properties
 
-          # 2. Append subprojects rule directly into android/build.gradle
-          # This forces :file_picker, :app_links, and all plugins to compile with SDK 36
-          cat << 'EOF' >> android/build.gradle
-
-          subprojects {
+          # 2. Global init script to ensure all plugins compile against SDK 36 without skipping tasks
+          mkdir -p ~/.gradle/init.d/
+          cat << 'EOF' > ~/.gradle/init.d/force_sdk36.gradle
+          allprojects {
               afterEvaluate { project ->
                   if (project.hasProperty("android")) {
-                      android {
-                          compileSdkVersion 36
-                          buildToolsVersion "36.0.0"
-                          defaultConfig {
-                              targetSdkVersion 36
+                      try {
+                          project.android {
+                              compileSdkVersion 36
                           }
-                      }
+                      } catch (Exception ignored) {}
                   }
               }
           }
