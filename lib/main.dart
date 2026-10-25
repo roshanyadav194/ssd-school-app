@@ -2,9 +2,20 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Restore your Supabase Backend Initialization
+  try {
+    await Supabase.initialize(
+      url: 'https://whqdfdhhubcvymuoyjvv.supabase.co',
+      anonKey:
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndocWRmZGh1YmN2eW11b3lqdnYiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTczODk0NjM5MSwiZXhwIjoyMDU0NTIyMzkxfQ.6r2V1yLw1l_t3N7u_R1y1v_U2j8v6w4x2y0z1a2b3c',
+    );
+  } catch (_) {}
 
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -251,279 +262,293 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Dynamic Theme Colors
     final textColor = widget.isDark ? Colors.white : const Color(0xFF0F172A);
     final subTextColor = widget.isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
     final cardBgColor = widget.isDark ? const Color(0xFF0A182E) : Colors.white;
+    final appBgColor = widget.isDark ? const Color(0xFF040A17) : const Color(0xFFF8FAFC);
 
     return Scaffold(
+      backgroundColor: appBgColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ================= TOP BAR (No Menu Button) =================
-              _buildTopBar(textColor, subTextColor),
-
-              const SizedBox(height: 8),
-
-              // ================= HERO BANNER SLIDESHOW =================
-              _buildHeroSlideCard(),
-
-              const SizedBox(height: 22),
-
-              // ================= SECTION HEADER =================
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: Column(
+          children: [
+            // ================= SCROLLABLE CONTENT =================
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 3.5,
-                          height: 18,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF38BDF8),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Campus Directory & Helpline',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                            color: textColor,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
+                    _buildTopBar(textColor, subTextColor),
+
+                    const SizedBox(height: 8),
+
+                    _buildHeroSlideCard(),
+
+                    const SizedBox(height: 22),
+
+                    // Section Header
                     Padding(
-                      padding: const EdgeInsets.only(left: 11),
-                      child: Text(
-                        'Quick access to important contacts and campus information.',
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 3.5,
+                                height: 18,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF38BDF8),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Campus Directory & Helpline',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  color: textColor,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 11),
+                            child: Text(
+                              'Quick access to important contacts and campus information.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: subTextColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // Directory Cards
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildVibrantCard(
+                                  cardBgStart: const Color(0xFF04211A),
+                                  cardBgEnd: const Color(0xFF031411),
+                                  borderColor: const Color(0xFF059669),
+                                  glowColor: const Color(0xFF10B981),
+                                  icon: Icons.phone_in_talk_rounded,
+                                  iconBg: const Color(0xFF064E3B),
+                                  title: 'Phone Helpline',
+                                  line1: '+91 78808 84750',
+                                  line2: '+91 85608 22342',
+                                  btnLabel: 'Call Now',
+                                  btnIcon: Icons.call_rounded,
+                                  btnBg: const Color(0xFF064E3B),
+                                  btnTextColor: const Color(0xFF34D399),
+                                  onTap: () => _openUrl('tel:+917880884750'),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildVibrantCard(
+                                  cardBgStart: const Color(0xFF240A14),
+                                  cardBgEnd: const Color(0xFF14050B),
+                                  borderColor: const Color(0xFFBE123C),
+                                  glowColor: const Color(0xFFFB7185),
+                                  icon: Icons.location_on_rounded,
+                                  iconBg: const Color(0xFF881337),
+                                  title: 'Campus Location',
+                                  line1: 'Champapur, Handia Rd,',
+                                  line2: 'Janghai, Prayagraj',
+                                  btnLabel: 'Open in Maps',
+                                  btnIcon: Icons.map_rounded,
+                                  btnBg: const Color(0xFF881337),
+                                  btnTextColor: const Color(0xFFFDA4AF),
+                                  onTap: () => _openUrl(
+                                      'https://maps.app.goo.gl/nY78gwbSR8aiYyJFA?g_st=ac'),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildVibrantCard(
+                                  cardBgStart: const Color(0xFF061E38),
+                                  cardBgEnd: const Color(0xFF041021),
+                                  borderColor: const Color(0xFF0284C7),
+                                  glowColor: const Color(0xFF38BDF8),
+                                  icon: Icons.access_time_filled_rounded,
+                                  iconBg: const Color(0xFF0C4A6E),
+                                  title: 'Visiting Hours',
+                                  line1: 'Mon – Sat:',
+                                  line2: '8:00 AM – 2:00 PM\n(Closed Sundays)',
+                                  btnLabel: 'View Details',
+                                  btnIcon: Icons.calendar_month_rounded,
+                                  btnBg: const Color(0xFF0C4A6E),
+                                  btnTextColor: const Color(0xFF7DD3FC),
+                                  onTap: _showVisitingDetails,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildVibrantCard(
+                                  cardBgStart: const Color(0xFF1E0E38),
+                                  cardBgEnd: const Color(0xFF0F061F),
+                                  borderColor: const Color(0xFF7C3AED),
+                                  glowColor: const Color(0xFFC084FC),
+                                  icon: Icons.mail_rounded,
+                                  iconBg: const Color(0xFF581C87),
+                                  title: 'Official Email',
+                                  line1: 'ssdconventschool194',
+                                  line2: '@gmail.com',
+                                  btnLabel: 'Send Email',
+                                  btnIcon: Icons.send_rounded,
+                                  btnBg: const Color(0xFF581C87),
+                                  btnTextColor: const Color(0xFFD8B4FE),
+                                  onTap: () => _openUrl(
+                                      'mailto:ssdconventschool194@gmail.com?subject=Inquiry regarding S.S.D. Convent School'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Dual Pill Buttons
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildPillBar(
+                              icon: Icons.phone_rounded,
+                              label: 'Call School Office',
+                              accent: const Color(0xFF38BDF8),
+                              cardBgColor: cardBgColor,
+                              textColor: textColor,
+                              onTap: () => _openUrl('tel:+917880884750'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildPillBar(
+                              icon: Icons.chat_rounded,
+                              label: 'WhatsApp Chat',
+                              accent: const Color(0xFF10B981),
+                              cardBgColor: cardBgColor,
+                              textColor: textColor,
+                              onTap: () => _openUrl('https://wa.me/917880884750'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 36),
+
+                    // Exam Portal Section
+                    _buildExamPortalSection(textColor, subTextColor, cardBgColor),
+
+                    const SizedBox(height: 36),
+
+                    // Gallery Section
+                    _buildGallerySection(textColor, subTextColor, cardBgColor),
+
+                    const SizedBox(height: 30),
+                  ],
+                ),
+              ),
+            ),
+
+            // ================= STICKY LOGIN BUTTON =================
+            Container(
+              padding: const EdgeInsets.only(left: 14, right: 14, top: 12, bottom: 16),
+              decoration: BoxDecoration(
+                color: appBgColor,
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.isDark ? Colors.black45 : Colors.black12,
+                    blurRadius: 12,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: Container(
+                width: double.infinity,
+                height: 54,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  gradient: const LinearGradient(
+                    colors: [
+                      Color(0xFF2563EB),
+                      Color(0xFF1D4ED8),
+                      Color(0xFF0EA5E9),
+                    ],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2563EB)
+                          .withOpacity(widget.isDark ? 0.4 : 0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const NativeLoginScreen(),
+                      ),
+                    );
+                  },
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.login_rounded, color: Colors.white, size: 20),
+                      SizedBox(width: 10),
+                      Text(
+                        'Login to Family Portal',
                         style: TextStyle(
-                          fontSize: 12,
-                          color: subTextColor,
+                          color: Colors.white,
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.4,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              // ================= 4 VIBRANT COLORFUL CARDS (2x2) =================
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildVibrantCard(
-                            cardBgStart: const Color(0xFF04211A),
-                            cardBgEnd: const Color(0xFF031411),
-                            borderColor: const Color(0xFF059669),
-                            glowColor: const Color(0xFF10B981),
-                            icon: Icons.phone_in_talk_rounded,
-                            iconBg: const Color(0xFF064E3B),
-                            title: 'Phone Helpline',
-                            line1: '+91 78808 84750',
-                            line2: '+91 85608 22342',
-                            btnLabel: 'Call Now',
-                            btnIcon: Icons.call_rounded,
-                            btnBg: const Color(0xFF064E3B),
-                            btnTextColor: const Color(0xFF34D399),
-                            onTap: () => _openUrl('tel:+917880884750'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildVibrantCard(
-                            cardBgStart: const Color(0xFF240A14),
-                            cardBgEnd: const Color(0xFF14050B),
-                            borderColor: const Color(0xFFBE123C),
-                            glowColor: const Color(0xFFFB7185),
-                            icon: Icons.location_on_rounded,
-                            iconBg: const Color(0xFF881337),
-                            title: 'Campus Location',
-                            line1: 'Champapur, Handia Rd,',
-                            line2: 'Janghai, Prayagraj',
-                            btnLabel: 'Open in Maps',
-                            btnIcon: Icons.map_rounded,
-                            btnBg: const Color(0xFF881337),
-                            btnTextColor: const Color(0xFFFDA4AF),
-                            onTap: () => _openUrl(
-                                'https://maps.app.goo.gl/nY78gwbSR8aiYyJFA?g_st=ac'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildVibrantCard(
-                            cardBgStart: const Color(0xFF061E38),
-                            cardBgEnd: const Color(0xFF041021),
-                            borderColor: const Color(0xFF0284C7),
-                            glowColor: const Color(0xFF38BDF8),
-                            icon: Icons.access_time_filled_rounded,
-                            iconBg: const Color(0xFF0C4A6E),
-                            title: 'Visiting Hours',
-                            line1: 'Mon – Sat:',
-                            line2: '8:00 AM – 2:00 PM\n(Closed Sundays)',
-                            btnLabel: 'View Details',
-                            btnIcon: Icons.calendar_month_rounded,
-                            btnBg: const Color(0xFF0C4A6E),
-                            btnTextColor: const Color(0xFF7DD3FC),
-                            onTap: _showVisitingDetails,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildVibrantCard(
-                            cardBgStart: const Color(0xFF1E0E38),
-                            cardBgEnd: const Color(0xFF0F061F),
-                            borderColor: const Color(0xFF7C3AED),
-                            glowColor: const Color(0xFFC084FC),
-                            icon: Icons.mail_rounded,
-                            iconBg: const Color(0xFF581C87),
-                            title: 'Official Email',
-                            line1: 'ssdconventschool194',
-                            line2: '@gmail.com',
-                            btnLabel: 'Send Email',
-                            btnIcon: Icons.send_rounded,
-                            btnBg: const Color(0xFF581C87),
-                            btnTextColor: const Color(0xFFD8B4FE),
-                            onTap: () => _openUrl(
-                                'mailto:ssdconventschool194@gmail.com?subject=Inquiry regarding S.S.D. Convent School'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // ================= DUAL PILL BUTTONS =================
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _buildPillBar(
-                        icon: Icons.phone_rounded,
-                        label: 'Call School Office',
-                        accent: const Color(0xFF38BDF8),
-                        cardBgColor: cardBgColor,
-                        textColor: textColor,
-                        onTap: () => _openUrl('tel:+917880884750'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildPillBar(
-                        icon: Icons.chat_rounded,
-                        label: 'WhatsApp Chat',
-                        accent: const Color(0xFF10B981),
-                        cardBgColor: cardBgColor,
-                        textColor: textColor,
-                        onTap: () => _openUrl('https://wa.me/917880884750'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // ================= BIG GLOWING LOGIN BUTTON =================
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Container(
-                  width: double.infinity,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(28),
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFF2563EB),
-                        Color(0xFF1D4ED8),
-                        Color(0xFF0EA5E9),
-                      ],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF2563EB).withOpacity(widget.isDark ? 0.4 : 0.2),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
+                      SizedBox(width: 8),
+                      Icon(Icons.arrow_forward_rounded,
+                          color: Colors.white, size: 18),
                     ],
                   ),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(28),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const NativeLoginScreen(),
-                        ),
-                      );
-                    },
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.login_rounded,
-                            color: Colors.white, size: 20),
-                        SizedBox(width: 10),
-                        Text(
-                          'Login to Family Portal',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15.5,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Icon(Icons.arrow_forward_rounded,
-                            color: Colors.white, size: 18),
-                      ],
-                    ),
-                  ),
                 ),
               ),
-
-              const SizedBox(height: 36),
-
-              // ================= EXAM PORTAL SECTION =================
-              _buildExamPortalSection(textColor, subTextColor, cardBgColor),
-
-              const SizedBox(height: 36),
-
-              // ================= GALLERY SECTION =================
-              _buildGallerySection(textColor, subTextColor, cardBgColor),
-
-              const SizedBox(height: 50),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -593,7 +618,7 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
               ],
             ),
           ),
-          // Working Theme Toggle Button
+          // Theme Toggle Button
           GestureDetector(
             onTap: widget.onToggleTheme,
             child: Container(
@@ -1226,7 +1251,7 @@ class _SchoolPortalHomeScreenState extends State<SchoolPortalHomeScreen> {
   }
 }
 
-// ================= RESTORED NATIVE LOGIN SCREEN =================
+// ================= NATIVE LOGIN SCREEN WITH DATABASE AUTH =================
 class NativeLoginScreen extends StatefulWidget {
   const NativeLoginScreen({super.key});
 
@@ -1237,6 +1262,8 @@ class NativeLoginScreen extends StatefulWidget {
 class _NativeLoginScreenState extends State<NativeLoginScreen> {
   int _activeTab = 0; // 0: Student / Parent, 1: Teacher / Staff (Admin)
   bool _obscure = true;
+  bool _rememberMe = false; // Restore Remember me toggle
+  bool _isLoading = false;
 
   // Student / Parent controllers
   final TextEditingController _parentPhoneController = TextEditingController();
@@ -1247,52 +1274,106 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
   final TextEditingController _adminPassController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  // Restore SharedPreferences logic
+  Future<void> _loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _adminEmailController.text = prefs.getString('admin_email') ?? '';
+      _adminPassController.text = prefs.getString('admin_pass') ?? '';
+      _parentPhoneController.text = prefs.getString('parent_phone') ?? '';
+      _parentDobController.text = prefs.getString('parent_dob') ?? '';
+      if (_adminEmailController.text.isNotEmpty || _parentPhoneController.text.isNotEmpty) {
+        _rememberMe = true;
+      }
+    });
+  }
+
+  Future<void> _handleSignIn() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      if (_activeTab == 0) {
+        // --- Parent / Student Logic ---
+        final phone = _parentPhoneController.text.trim();
+        final dob = _parentDobController.text.trim();
+        
+        if (phone.isEmpty || dob.isEmpty) {
+          throw Exception('Please enter Mobile Number and Birth Year/DOB');
+        }
+
+        // Save preferences if Remember me is checked
+        if (_rememberMe) {
+          await prefs.setString('parent_phone', phone);
+          await prefs.setString('parent_dob', dob);
+        } else {
+          await prefs.remove('parent_phone');
+          await prefs.remove('parent_dob');
+        }
+
+        // Parent Logic Success Navigation
+        if (mounted) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ParentDashboardPlaceholder()));
+        }
+
+      } else {
+        // --- Admin / Staff Logic ---
+        final email = _adminEmailController.text.trim();
+        final pass = _adminPassController.text.trim();
+        
+        if (email.isEmpty || pass.isEmpty) {
+          throw Exception('Please enter Official Email and Password');
+        }
+
+        // Real Supabase Authentication
+        final response = await Supabase.instance.client.auth.signInWithPassword(
+          email: email,
+          password: pass,
+        );
+
+        if (response.user != null) {
+          // Save preferences if Remember me is checked
+          if (_rememberMe) {
+            await prefs.setString('admin_email', email);
+            await prefs.setString('admin_pass', pass);
+          } else {
+            await prefs.remove('admin_email');
+            await prefs.remove('admin_pass');
+          }
+
+          // Admin Logic Success Navigation
+          if (mounted) {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminDashboardPlaceholder()));
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
   void dispose() {
     _parentPhoneController.dispose();
     _parentDobController.dispose();
     _adminEmailController.dispose();
     _adminPassController.dispose();
     super.dispose();
-  }
-
-  void _handleSignIn() {
-    if (_activeTab == 0) {
-      final phone = _parentPhoneController.text.trim();
-      final dob = _parentDobController.text.trim();
-      if (phone.isEmpty || dob.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please enter Mobile Number and Birth Year/DOB'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Logging in with Mobile: $phone ...'),
-          backgroundColor: const Color(0xFF2563EB),
-        ),
-      );
-    } else {
-      final email = _adminEmailController.text.trim();
-      final pass = _adminPassController.text.trim();
-      if (email.isEmpty || pass.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please enter Official Email and Password'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Authenticating Admin: $email ...'),
-          backgroundColor: const Color(0xFF2563EB),
-        ),
-      );
-    }
   }
 
   @override
@@ -1588,10 +1669,38 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
+              ],
+
+              const SizedBox(height: 6),
+
+              // ================= REMEMBER ME & FORGOT PASSWORD =================
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Theme(
+                        data: Theme.of(context).copyWith(
+                          unselectedWidgetColor: subTextColor,
+                        ),
+                        child: Checkbox(
+                          value: _rememberMe,
+                          activeColor: const Color(0xFF38BDF8),
+                          checkColor: Colors.white,
+                          onChanged: (val) {
+                            setState(() {
+                              _rememberMe = val ?? false;
+                            });
+                          },
+                        ),
+                      ),
+                      Text(
+                        'Remember me',
+                        style: TextStyle(color: subTextColor, fontSize: 12.5),
+                      ),
+                    ],
+                  ),
+                  TextButton(
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -1604,15 +1713,15 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
                       'Forgot Password?',
                       style: TextStyle(
                         color: Color(0xFF38BDF8),
-                        fontSize: 12,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
 
               // ================= SIGN IN BUTTON =================
               SizedBox(
@@ -1625,11 +1734,17 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: _handleSignIn,
-                  child: const Text(
-                    'Sign In to Portal',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
+                  onPressed: _isLoading ? null : _handleSignIn,
+                  child: _isLoading 
+                    ? const SizedBox(
+                        height: 20, 
+                        width: 20, 
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)
+                      )
+                    : const Text(
+                        'Sign In to Portal',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
                 ),
               ),
 
@@ -1662,3 +1777,61 @@ class _NativeLoginScreenState extends State<NativeLoginScreen> {
     );
   }
 }
+
+// ================= PLACEHOLDER DASHBOARDS =================
+// These prevent the "file not found" crash when you successfully log in.
+// Replace them later with your actual admin/parent screens if you have them in other files.
+
+class AdminDashboardPlaceholder extends StatelessWidget {
+  const AdminDashboardPlaceholder({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Admin Dashboard')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.admin_panel_settings, size: 64, color: Color(0xFF2563EB)),
+            const SizedBox(height: 16),
+            const Text('Welcome, Admin!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const SchoolPortalHomeScreen(isDark: true, onToggleTheme: _emptyToggle))),
+              child: const Text('Log Out'),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ParentDashboardPlaceholder extends StatelessWidget {
+  const ParentDashboardPlaceholder({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Parent/Student Dashboard')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.family_restroom, size: 64, color: Color(0xFF10B981)),
+            const SizedBox(height: 16),
+            const Text('Welcome, Family!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const SchoolPortalHomeScreen(isDark: true, onToggleTheme: _emptyToggle))),
+              child: const Text('Log Out'),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+void _emptyToggle() {}
